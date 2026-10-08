@@ -48,7 +48,7 @@ export function TopicRecommendationSection({
 
   return (
     <ChartCard
-      title="💡 Topic Recommendation"
+      title="Topic Recommendation"
       titleClassName="text-lg font-semibold"
       description="Daftar topik teratas yang sedang trending dan memiliki peluang tinggi untuk menarik perhatian audiens secara luas."
       status={cardStatus}

@@ -77,7 +77,7 @@ export function TopArticlesSection({
 
   return (
     <ChartCard
-      title="🔥 Top Artikel"
+      title="Top Artikel"
       titleClassName="text-lg font-semibold"
       description="5 artikel dengan performa terbaik berdasarkan page views"
       status={cardStatus}

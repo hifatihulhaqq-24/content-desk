@@ -88,7 +88,7 @@ export function BuildingBlockSection({ cluster }: BuildingBlockSectionProps) {
 
   return (
     <ChartCard
-      title="🧩 Building Block Analysis"
+      title="Building Block Analysis"
       titleClassName="text-lg font-semibold"
       description="Top 5 penyusun konten"
       status={cardStatus}

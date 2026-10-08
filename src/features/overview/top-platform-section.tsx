@@ -86,7 +86,7 @@ export function TopPlatformSection({
 
   return (
     <ChartCard
-      title="👁 Platform Tayangan Terbanyak"
+      title="Platform Tayangan Terbanyak"
       titleClassName="text-lg font-semibold"
       description="Peringkat platform berdasarkan total tayangan"
       status={cardStatus}

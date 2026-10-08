@@ -51,7 +51,7 @@ export function ContentTypeSection({ cluster }: ContentTypeSectionProps) {
 
   return (
     <ChartCard
-      title="🏞️ Content Type Analysis"
+      title="Content Type Analysis"
       titleClassName="text-lg font-semibold"
       description="Distribusi Gambar/Video/Carousel pada periode ini"
       status={cardStatus}

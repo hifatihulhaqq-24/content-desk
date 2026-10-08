@@ -77,7 +77,7 @@ export function PublishingTimeSection({ cluster }: PublishingTimeSectionProps) {
 
   return (
     <ChartCard
-      title="⏱️ Publishing Time Analysis"
+      title="Publishing Time Analysis"
       titleClassName="text-lg font-semibold"
       description={`Distribusi ${metricLabel.toLowerCase()} per jam (07.00–21.00) pada periode ini`}
       status={cardStatus}

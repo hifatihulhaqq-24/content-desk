@@ -69,7 +69,7 @@ function SectionHeading() {
   return (
     <div className="flex items-center justify-between gap-2">
       <div>
-        <h2 className="text-lg font-semibold">📊 Performa Web</h2>
+        <h2 className="text-lg font-semibold">Performa Web</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Aktivitas situs web secara menyeluruh — tidak terfilter cluster.
         </p>
