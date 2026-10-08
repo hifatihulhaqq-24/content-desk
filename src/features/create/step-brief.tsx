@@ -22,7 +22,6 @@ import { ArticlePanel } from "./brief/article-panel";
 import { CarouselPanel } from "./brief/carousel-panel";
 import { ImagePanel } from "./brief/image-panel";
 import { VideoPanel } from "./brief/video-panel";
-import { SelectionSummary } from "./selection-summary";
 import type { CreateFlow } from "./use-create-flow";
 
 interface StepBriefProps {
@@ -51,7 +50,7 @@ function GeneratingPanel() {
     <section className="rounded-xl border border-border bg-card p-6 shadow-xs">
       <div className="flex items-center gap-2">
         <Loader2 className="size-4 animate-spin text-primary" aria-hidden />
-        <h2 className="text-sm font-semibold">AI sedang menyusun draf brief…</h2>
+        <h2 className="text-sm font-semibold">Sedang menyusun draf brief…</h2>
       </div>
       <ol className="mt-4 space-y-3">
         {STAGES.map((label, index) => (
@@ -79,8 +78,8 @@ function GeneratingPanel() {
         aria-label="Progres pembuatan draf"
       />
       <p className="mt-2 text-xs text-muted-foreground">
-        Estimasi beberapa detik — Anda akan masuk ke tahap penyuntingan setelah
-        draf siap.
+        Estimasi beberapa detik — kamu akan masuk ke tahap penyuntingan
+        setelah draf siap.
       </p>
     </section>
   );
@@ -103,13 +102,6 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
   if (!draft) {
     return (
       <div className="space-y-6">
-        <SelectionSummary
-          scenario={flow.scenario}
-          topicTitle={flow.topicTitle}
-          angleTitle={flow.angle?.title ?? null}
-          contentType={flow.contentType}
-          assetSummary={flow.assetSummary}
-        />
         {showSkeleton ? (
           <GeneratingPanel />
         ) : brief.status === "error" ? (
@@ -137,14 +129,6 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
 
   return (
     <div className="space-y-6">
-      <SelectionSummary
-        scenario={flow.scenario}
-        topicTitle={flow.topicTitle}
-        angleTitle={flow.angle?.title ?? null}
-        contentType={flow.contentType}
-        assetSummary={flow.assetSummary}
-      />
-
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 shadow-xs">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

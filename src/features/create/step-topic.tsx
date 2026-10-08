@@ -1,11 +1,14 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Check, PenLine, TrendingUp } from "lucide-react";
+import { ArrowRight, Check, PenLine, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/data/states";
+import { TopicCard } from "@/components/data/topic-card";
 import { getIdeationService } from "@/services/ideation-service";
 import { cn } from "@/lib/utils";
 import type { CreateFlow } from "./use-create-flow";
@@ -16,24 +19,52 @@ interface StepTopicProps {
 
 const MIN_CUSTOM_LENGTH = 4;
 
+/** Label chips — sumber dipendekkan biar muat di satu baris. */
+const SOURCE_LABEL: Record<string, string> = {
+  "Media sosial kompetitor": "Kompetitor",
+  "Pencarian internal": "Pencarian",
+  "Tren kanal (mock)": "Tren kanal",
+  "Monitor berita masuk": "Berita",
+  "Data performa historis": "Performa",
+};
+
 /** Step 1 — landing: rekomendasi topik (R6/R7) atau topik sendiri. */
 export function StepTopic({ flow }: StepTopicProps) {
+  const [search, setSearch] = useState("");
+  const [source, setSource] = useState<string | null>(null);
+
   const query = useQuery({
     queryKey: ["ideation-topics"],
     queryFn: () => getIdeationService().listTopicIdeas(),
   });
 
-  const topics = query.data ?? [];
+  const topics = useMemo(() => query.data ?? [], [query.data]);
   const selectedRecommendedId =
     flow.scenario === "recommended" ? flow.topicIdea?.id : undefined;
   const customSelected = flow.scenario === "custom";
   const customReady = flow.customDraft.trim().length >= MIN_CUSTOM_LENGTH;
   const customMatches =
-    customSelected &&
-    flow.customDraft.trim() === flow.topicTitle.trim();
+    customSelected && flow.customDraft.trim() === flow.topicTitle.trim();
 
-  return (
-    <div className="space-y-6">
+  const sources = useMemo(() => {
+    const seen = new Set<string>();
+    for (const topic of topics) seen.add(topic.source);
+    return Array.from(seen);
+  }, [topics]);
+
+  const visibleTopics = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return topics.filter((topic) => {
+      if (source && topic.source !== source) return false;
+      if (!needle) return true;
+      return (
+        topic.title.toLowerCase().includes(needle) ||
+        topic.reason.toLowerCase().includes(needle)
+      );
+    });
+  }, [topics, source, search]);
+
+  return (    <div className="space-y-6">
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
@@ -48,6 +79,64 @@ export function StepTopic({ flow }: StepTopicProps) {
           )}
         </div>
 
+        {!query.isPending && !query.isError && topics.length > 0 && (
+          <div className="space-y-2">
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Cari topik… misalnya “hujan” atau “perjalanan”"
+                aria-label="Cari rekomendasi topik"
+                className="pl-9"
+              />
+            </div>
+
+            <div
+              role="group"
+              aria-label="Filter sumber rekomendasi"
+              className="flex flex-wrap items-center gap-1.5"
+            >
+              <button
+                type="button"
+                aria-pressed={source === null}
+                onClick={() => setSource(null)}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+                  source === null
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted/60"
+                )}
+              >
+                Semua
+              </button>
+              {sources.map((item) => {
+                const active = source === item;
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    aria-pressed={active}
+                    title={item}
+                    onClick={() => setSource(active ? null : item)}
+                    className={cn(
+                      "max-w-40 truncate rounded-full border px-2.5 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+                      active
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted/60"
+                    )}
+                  >
+                    {SOURCE_LABEL[item] ?? item}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {query.isPending ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }, (_, index) => (
@@ -55,7 +144,13 @@ export function StepTopic({ flow }: StepTopicProps) {
                 key={index}
                 className="rounded-xl border border-border bg-card p-4 shadow-xs"
               >
-                <Skeleton className="h-4 w-3/4" />
+                <div className="flex gap-3">
+                  <Skeleton className="size-9 shrink-0 rounded-lg" />
+                  <div className="min-w-0 flex-1">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="mt-2 h-1.5 w-full rounded-full" />
+                  </div>
+                </div>
                 <Skeleton className="mt-3 h-3 w-full" />
                 <Skeleton className="mt-2 h-3 w-2/3" />
                 <Skeleton className="mt-4 h-5 w-24" />
@@ -67,69 +162,62 @@ export function StepTopic({ flow }: StepTopicProps) {
         ) : topics.length === 0 ? (
           <EmptyState
             title="Belum ada rekomendasi"
-            message="Belum ada topik yang bisa direkomendasikan. Anda tetap bisa menulis topik sendiri di bawah."
+            message="Belum ada topik yang bisa direkomendasikan. Kamu tetap bisa menulis topik sendiri di bawah."
             className="min-h-40"
+          />
+        ) : visibleTopics.length === 0 ? (
+          <EmptyState
+            title="Tidak ada topik yang cocok"
+            message="Coba kata kunci lain atau tampilkan semua sumber."
+            className="min-h-40"
+            action={
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSearch("");
+                  setSource(null);
+                }}
+              >
+                Tampilkan semua
+              </Button>
+            }
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {topics.map((topic) => {
-              const selected = selectedRecommendedId === topic.id;
-              return (
-                <button
-                  key={topic.id}
-                  type="button"
-                  onClick={() =>
-                    flow.requestTopic({ scenario: "recommended", topic })
-                  }
-                  aria-pressed={selected}
-                  className={cn(
-                    "flex flex-col rounded-xl border bg-card p-4 text-left shadow-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring",
-                    selected
-                      ? "border-primary ring-1 ring-primary"
-                      : "border-border hover:border-primary/40 hover:bg-muted/40"
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-semibold leading-snug">
-                      {topic.title}
-                    </h3>
-                    {selected ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        <Check className="size-3" aria-hidden /> Terpilih
-                      </span>
-                    ) : (
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        Skor {topic.score}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                    {topic.reason}
-                  </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                    <span className="inline-flex items-center gap-1 font-medium text-positive">
-                      <TrendingUp className="size-3.5" aria-hidden />
-                      {topic.trendSignal}
-                    </span>
-                    <span className="text-muted-foreground">{topic.source}</span>
-                  </div>
-                </button>
-              );
-            })}
+            {visibleTopics.map((topic, index) => (
+              <TopicCard
+                key={topic.id}
+                topic={topic}
+                index={index}
+                selected={selectedRecommendedId === topic.id}
+                actionLabel="Pakai topik ini"
+                onSelect={() =>
+                  flow.requestTopic({ scenario: "recommended", topic })
+                }
+              />
+            ))}
           </div>
         )}
       </section>
 
-      <section className="space-y-3 rounded-xl border border-dashed border-border p-4">
+      <section className="rounded-xl border border-border bg-card p-4 shadow-xs">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className="inline-flex items-center gap-2 text-base font-semibold">
-              <PenLine className="size-4" aria-hidden /> Topik sendiri
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Tidak ada rekomendasi yang cocok? Tulis topik Anda — angle akan
-              dibuat AI dari topik tersebut.
-            </p>
+          <div className="flex items-start gap-3">
+            <span
+              aria-hidden
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_oklab,var(--chart-content)_13%,transparent)] text-[var(--chart-content)] dark:text-chart-1"
+            >
+              <PenLine className="size-4" />
+            </span>
+            <div>
+              <h2 className="text-base font-semibold">Topik sendiri</h2>
+              <p className="text-xs text-muted-foreground">
+                Sudah ada ide? Tulis di sini — angle & format disusun di langkah
+                berikutnya.
+              </p>
+            </div>
           </div>
           {customMatches && (
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
@@ -137,15 +225,17 @@ export function StepTopic({ flow }: StepTopicProps) {
             </span>
           )}
         </div>
+
         <Textarea
           value={flow.customDraft}
           onChange={(event) => flow.setCustomDraft(event.target.value)}
           placeholder="Contoh: Tips aman bepergian saat musim hujan"
           rows={3}
           aria-label="Tulis topik sendiri"
-          className="resize-y"
+          className="mt-3 resize-y"
         />
-        <div className="flex items-center justify-between gap-3">
+
+        <div className="mt-2 flex items-center justify-between gap-3">
           <span className="text-xs text-muted-foreground">
             {flow.customDraft.trim().length < MIN_CUSTOM_LENGTH
               ? `Minimal ${MIN_CUSTOM_LENGTH} karakter.`

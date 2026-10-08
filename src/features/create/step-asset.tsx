@@ -24,7 +24,6 @@ import { getIdeationService } from "@/services/ideation-service";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/format";
 import type { UploadedMediaItem } from "@/types/ideation";
-import { SelectionSummary } from "./selection-summary";
 import type { CreateFlow } from "./use-create-flow";
 
 interface StepAssetProps {
@@ -141,21 +140,13 @@ export function StepAsset({ flow }: StepAssetProps) {
 
   return (
     <div className="space-y-6">
-      <SelectionSummary
-        scenario={flow.scenario}
-        topicTitle={flow.topicTitle}
-        angleTitle={flow.angle?.title ?? null}
-        contentType={flow.contentType}
-        assetSummary={flow.assetSummary}
-      />
-
       <section className="space-y-3">
         <div>
           <h2 className="text-base font-semibold">
-            Apakah Anda punya materi/aset?
+            Punya materi buat brief ini?
           </h2>
           <p className="text-xs text-muted-foreground">
-            Materi yang tersedia membantu AI menyusun brief yang lebih relevan.
+            Materi yang tersedia membuat brief yang disusun jadi lebih relevan.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -187,7 +178,7 @@ export function StepAsset({ flow }: StepAssetProps) {
             </div>
             <h3 className="mt-3 text-sm font-semibold">Sudah punya</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Unggah dokumen, gambar, atau video yang sudah Anda siapkan.
+              Unggah dokumen, gambar, atau video yang sudah kamu siapkan.
             </p>
           </button>
 

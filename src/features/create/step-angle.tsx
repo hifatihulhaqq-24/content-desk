@@ -9,7 +9,6 @@ import {
   GalleryHorizontal,
   Image as ImageIcon,
   RotateCw,
-  Sparkles,
   Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,8 +18,8 @@ import { EmptyState, ErrorState } from "@/components/data/states";
 import { CONTENT_TYPE_MAP } from "@/config/content-types";
 import { getIdeationService } from "@/services/ideation-service";
 import { cn } from "@/lib/utils";
-import { SelectionSummary } from "./selection-summary";
 import type { CreateFlow } from "./use-create-flow";
+import type { ContentTypeId } from "@/types/ideation";
 
 const ICONS = {
   FileText,
@@ -28,6 +27,18 @@ const ICONS = {
   Image: ImageIcon,
   GalleryHorizontal,
 } as const;
+
+/** Tile format — warna dari token chart per tipe konten. */
+const TYPE_TINTS: Record<ContentTypeId, string> = {
+  article:
+    "bg-[color-mix(in_oklab,var(--chart-block-content)_15%,transparent)] text-[var(--chart-block-content)] dark:text-chart-1",
+  video:
+    "bg-[color-mix(in_oklab,var(--chart-impressions)_15%,transparent)] text-[var(--chart-impressions-dark)] dark:text-chart-2",
+  image:
+    "bg-[color-mix(in_oklab,var(--chart-content)_13%,transparent)] text-[var(--chart-content)] dark:text-chart-3",
+  carousel:
+    "bg-[color-mix(in_oklab,var(--chart-engagements)_15%,transparent)] text-[var(--chart-engagements-dark)] dark:text-chart-4",
+};
 
 interface StepAngleProps {
   flow: CreateFlow;
@@ -49,21 +60,14 @@ export function StepAngle({ flow }: StepAngleProps) {
 
   return (
     <div className="space-y-6">
-      <SelectionSummary
-        scenario={flow.scenario}
-        topicTitle={flow.topicTitle}
-        angleTitle={flow.angle?.title ?? null}
-        contentType={flow.contentType}
-      />
-
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 className="text-base font-semibold">Pilih angle</h2>
             <p className="text-xs text-muted-foreground">
               {scenario === "recommended"
-                ? "Angle disusun dari performa historis konten serupa — setiap angle mengunci satu format konten."
-                : "Angle disusun AI dari topik Anda dan sinyal tren terkini — setiap angle mengunci satu format konten."}
+                ? "Disusun dari performa historis konten serupa di cluster yang sama."
+                : "Disusun dari topikmu dan sinyal tren terkini."}
             </p>
           </div>
           {query.isSuccess && angles.length > 0 && (
@@ -90,9 +94,14 @@ export function StepAngle({ flow }: StepAngleProps) {
                 key={index}
                 className="rounded-xl border border-border bg-card p-4 shadow-xs"
               >
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="mt-3 h-3 w-full" />
-                <Skeleton className="mt-2 h-3 w-5/6" />
+                <div className="flex gap-4">
+                  <Skeleton className="size-14 shrink-0 rounded-xl" />
+                  <div className="min-w-0 flex-1">
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="mt-2 h-3 w-full" />
+                    <Skeleton className="mt-2 h-3 w-5/6" />
+                  </div>
+                </div>
                 <Skeleton className="mt-4 h-3 w-2/3" />
               </div>
             ))}
@@ -102,7 +111,7 @@ export function StepAngle({ flow }: StepAngleProps) {
         ) : angles.length === 0 ? (
           <EmptyState
             title="Belum ada opsi angle"
-            message="AI belum menghasilkan angle untuk topik ini. Coba buat ulang."
+            message="Belum ada angle yang dihasilkan untuk topik ini. Coba buat ulang."
             className="min-h-40"
           />
         ) : (
@@ -118,34 +127,67 @@ export function StepAngle({ flow }: StepAngleProps) {
                   onClick={() => flow.requestSelection({ angle: option })}
                   aria-pressed={selected}
                   className={cn(
-                    "flex flex-col rounded-xl border bg-card p-4 text-left shadow-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+                    "group flex gap-4 rounded-xl border bg-card p-4 text-left shadow-xs",
+                    "transition duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring",
                     selected
                       ? "border-primary ring-1 ring-primary"
-                      : "border-border hover:border-primary/40 hover:bg-muted/40"
+                      : "border-border hover:border-primary/40"
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-semibold">{option.title}</h3>
-                    {selected && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        <Check className="size-3" aria-hidden /> Terpilih
-                      </span>
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "flex size-14 shrink-0 items-center justify-center rounded-xl",
+                      TYPE_TINTS[option.contentType]
                     )}
+                  >
+                    <TypeIcon className="size-6" />
+                  </span>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-semibold leading-snug">
+                        {option.title}
+                      </h3>
+                      {selected && (
+                        <span
+                          aria-hidden
+                          className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                        >
+                          <Check className="size-3" />
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {option.description}
+                    </p>
+
+                    <p className="mt-3 border-l-2 border-[color-mix(in_oklab,var(--chart-content)_35%,transparent)] pl-2 text-xs italic text-muted-foreground">
+                      {option.basis}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs"
+                      >
+                        <TypeIcon className="size-3.5" aria-hidden />
+                        {typeInfo.label}
+                      </Badge>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 text-xs font-medium transition-colors",
+                          selected
+                            ? "text-primary"
+                            : "text-muted-foreground group-hover:text-primary"
+                        )}
+                      >
+                        Pakai angle ini
+                        <ArrowRight className="size-3.5" aria-hidden />
+                      </span>
+                    </div>
                   </div>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {option.description}
-                  </p>
-                  <p className="mt-3 inline-flex items-start gap-1.5 rounded-md bg-muted/60 px-2 py-1.5 text-xs text-muted-foreground">
-                    <Sparkles
-                      className="mt-0.5 size-3.5 shrink-0 text-primary"
-                      aria-hidden
-                    />
-                    {option.basis}
-                  </p>
-                  <Badge variant="secondary" className="mt-3 self-start text-xs">
-                    <TypeIcon className="size-3.5" aria-hidden />
-                    {typeInfo.label}
-                  </Badge>
                 </button>
               );
             })}

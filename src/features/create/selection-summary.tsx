@@ -2,6 +2,7 @@
 
 import type { ContentTypeId, EntryScenario } from "@/types/ideation";
 import { contentTypeLabel } from "@/config/content-types";
+import { cn } from "@/lib/utils";
 
 interface SelectionSummaryProps {
   scenario: EntryScenario | null;
@@ -10,49 +11,100 @@ interface SelectionSummaryProps {
   contentType?: ContentTypeId | null;
   /** Ringkasan aset terpilih (Step 3–4). */
   assetSummary?: string | null;
+  /**
+   * `rail` — daftar label/nilai vertikal untuk rail kiri /create (lg+).
+   * `chip` — baris chip horizontal untuk fallback mobile.
+   */
+  variant?: "rail" | "chip";
 }
 
 function Chip({ label, value }: { label: string; value: string | null }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-xs">
       <span className="text-muted-foreground">{label}</span>
-      <span className={value ? "font-medium text-foreground" : "text-muted-foreground/70"}>
+      <span
+        className={cn(
+          "max-w-44 truncate",
+          value ? "font-medium text-foreground" : "text-muted-foreground/70"
+        )}
+      >
         {value ?? "—"}
       </span>
     </span>
   );
 }
 
-/** Ringkasan pilihan (R12) — tampil di Step 2 sampai Step 4. */
+function summaryRowsOf(props: SelectionSummaryProps) {
+  return [
+    { key: "topik", label: "Topik", value: props.topicTitle || null },
+    {
+      key: "skenario",
+      label: "Skenario",
+      value:
+        props.scenario === "recommended"
+          ? "Dari rekomendasi"
+          : props.scenario === "custom"
+            ? "Topik sendiri"
+            : null,
+    },
+    { key: "angle", label: "Angle", value: props.angleTitle ?? null },
+    {
+      key: "format",
+      label: "Format",
+      value: props.contentType ? contentTypeLabel(props.contentType) : null,
+    },
+    { key: "aset", label: "Aset", value: props.assetSummary ?? null },
+  ];
+}
+
+/** Ringkasan pilihan (R12) — rail kiri di lg+, chip di layar kecil. */
 export function SelectionSummary({
-  scenario,
-  topicTitle,
-  angleTitle,
-  contentType,
-  assetSummary = null,
+  variant = "chip",
+  ...props
 }: SelectionSummaryProps) {
+  const rows = summaryRowsOf(props);
+
+  if (variant === "rail") {
+    return (
+      <section className="rounded-xl border border-border bg-card p-4 shadow-xs">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Ringkasan pilihan
+        </h2>
+        <dl className="mt-3 space-y-2.5">
+          {rows.map((row) => (
+            <div
+              key={row.key}
+              className="flex items-baseline justify-between gap-3"
+            >
+              <dt className="shrink-0 text-xs text-muted-foreground">
+                {row.label}
+              </dt>
+              <dd
+                title={row.value ?? undefined}
+                className={cn(
+                  "min-w-0 truncate text-right text-xs",
+                  row.value
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground/70"
+                )}
+              >
+                {row.value ?? "—"}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+    );
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3 shadow-xs">
       <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Ringkasan pilihan
       </span>
-      <Chip label="Topik" value={topicTitle || null} />
-      <Chip
-        label="Skenario"
-        value={
-          scenario === "recommended"
-            ? "Dari rekomendasi"
-            : scenario === "custom"
-              ? "Topik sendiri"
-              : null
-        }
-      />
-      <Chip label="Angle" value={angleTitle ?? null} />
-      <Chip
-        label="Format"
-        value={contentType ? contentTypeLabel(contentType) : null}
-      />
-      <Chip label="Aset" value={assetSummary} />
+      {rows.map((row) => (
+        <Chip key={row.key} label={row.label} value={row.value} />
+      ))}
     </div>
   );
 }

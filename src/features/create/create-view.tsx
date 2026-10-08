@@ -15,13 +15,38 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getIdeationService } from "@/services/ideation-service";
-import { FlowStepper } from "./flow-stepper";
+import { FlowStepper, FLOW_STEPS } from "./flow-stepper";
+import { SelectionSummary } from "./selection-summary";
 import { StepAngle } from "./step-angle";
 import { StepAsset } from "./step-asset";
 import { StepBrief } from "./step-brief";
 import { StepTopic } from "./step-topic";
-import { useCreateFlow, type CreateFlow } from "./use-create-flow";
+import { useCreateFlow, type CreateFlow, type FlowStep } from "./use-create-flow";
 import { useBrief } from "@/hooks/use-brief";
+
+/** Judul & deskripsi tiap langkah — tampil di kepala kolom kanan. */
+const STEP_META: Record<FlowStep, { title: string; description: string }> = {
+  1: {
+    title: "Pilih insight yang mau diangkat",
+    description:
+      "Mulai dari rekomendasi topik yang sedang tren, atau tulis topik sendiri di bawahnya.",
+  },
+  2: {
+    title: "Tentukan angle & format",
+    description:
+      "Setiap angle mengunci satu format konten — pilih sudut pandang yang paling pas dengan topikmu.",
+  },
+  3: {
+    title: "Lengkapi materi pendukung",
+    description:
+      "Unggah materi sendiri atau pilih aset internal — pilih minimal satu supaya bisa lanjut ke draf.",
+  },
+  4: {
+    title: "Tinjau draf brief",
+    description:
+      "Periksa hasilnya, lalu bagikan ke tim untuk direview sebelum diproduksi.",
+  },
+};
 
 /** Body view flow — dipakai baik dari fresh flow maupun hasil pre-select. */
 function CreateFlowView({ flow }: { flow: CreateFlow }) {
@@ -32,6 +57,17 @@ function CreateFlowView({ flow }: { flow: CreateFlow }) {
     angle: flow.angle,
     contentType: flow.contentType,
   });
+
+  const meta = STEP_META[flow.step];
+  const stepLabel = FLOW_STEPS.find((item) => item.n === flow.step)?.label;
+
+  const summaryProps = {
+    scenario: flow.scenario,
+    topicTitle: flow.topicTitle,
+    angleTitle: flow.angle?.title ?? null,
+    contentType: flow.contentType,
+    assetSummary: flow.assetSummary,
+  };
 
   return (
     <PageContainer>
@@ -46,16 +82,46 @@ function CreateFlowView({ flow }: { flow: CreateFlow }) {
         }
       />
 
-      <FlowStepper
-        step={flow.step}
-        furthest={flow.furthest}
-        onSelect={flow.goToStep}
-      />
+      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="hidden space-y-4 lg:sticky lg:top-20 lg:block lg:self-start">
+          <FlowStepper
+            step={flow.step}
+            furthest={flow.furthest}
+            onSelect={flow.goToStep}
+            orientation="vertical"
+          />
+          <SelectionSummary variant="rail" {...summaryProps} />
+        </aside>
 
-      {flow.step === 1 && <StepTopic flow={flow} />}
-      {flow.step === 2 && <StepAngle flow={flow} />}
-      {flow.step === 3 && <StepAsset flow={flow} />}
-      {flow.step === 4 && <StepBrief flow={flow} brief={brief} />}
+        <div className="min-w-0 space-y-6">
+          <div className="space-y-4 lg:hidden">
+            <FlowStepper
+              step={flow.step}
+              furthest={flow.furthest}
+              onSelect={flow.goToStep}
+            />
+            <SelectionSummary variant="chip" {...summaryProps} />
+          </div>
+
+          <header className="space-y-2">
+            <span className="inline-flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">
+                Langkah {flow.step} dari 4
+              </span>
+              {stepLabel}
+            </span>
+            <h2 className="text-xl font-semibold tracking-tight">
+              {meta.title}
+            </h2>
+            <p className="text-sm text-muted-foreground">{meta.description}</p>
+          </header>
+
+          {flow.step === 1 && <StepTopic flow={flow} />}
+          {flow.step === 2 && <StepAngle flow={flow} />}
+          {flow.step === 3 && <StepAsset flow={flow} />}
+          {flow.step === 4 && <StepBrief flow={flow} brief={brief} />}
+        </div>
+      </div>
 
       <Dialog
         open={pending !== null}
