@@ -18,10 +18,9 @@ function emptyPoint(
   return {
     block,
     content: 0,
-    views: 0,
-    viewsPerContent: 0,
+    impressions: 0,
     engagements: 0,
-    engagementsPerContent: 0,
+    engagementRate: null,
   };
 }
 
@@ -48,20 +47,28 @@ export function computeBuildingBlock(
   const byBlock = new Map(
     blocks.map((point) => [point.block, point] as const)
   );
+  const reachByBlock = new Map<BuildingBlockPoint["block"], number>(
+    BUILDING_BLOCKS.map((block) => [block, 0])
+  );
 
   for (const post of posts) {
     const point = byBlock.get(post.buildingBlock);
     if (!point) continue;
     point.content += 1;
-    point.views += post.metrics.views;
+    point.impressions += post.metrics.impressions;
     point.engagements += engagementOf(post);
+    reachByBlock.set(
+      post.buildingBlock,
+      (reachByBlock.get(post.buildingBlock) ?? 0) + post.metrics.reach
+    );
   }
 
   for (const point of blocks) {
-    point.viewsPerContent =
-      point.content > 0 ? Math.round(point.views / point.content) : 0;
-    point.engagementsPerContent =
-      point.content > 0 ? Math.round(point.engagements / point.content) : 0;
+    const reach = reachByBlock.get(point.block) ?? 0;
+    point.engagementRate =
+      reach > 0
+        ? Math.round((point.engagements / reach) * 1000) / 10
+        : null;
   }
 
   const data = { blocks };

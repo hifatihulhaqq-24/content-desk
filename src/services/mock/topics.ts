@@ -4,6 +4,9 @@ import { randRange } from "./random";
 
 type TopicSeed = [title: string, contentCount: number, score: number];
 
+/** Jumlah rekomendasi topik yang ditampilkan (catetan Prambanan 8 Okt 2026). */
+const TOPIC_LIMIT = 5;
+
 const VIEWS_PER_CONTENT_MIN = 80;
 const VIEWS_PER_CONTENT_MAX = 520;
 
@@ -190,5 +193,6 @@ export function topicsForCluster(cluster?: string): TopicRecommendation[] {
       views: topicViews(title, contentCount),
       score,
     }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.score - a.score)
+    .slice(0, TOPIC_LIMIT);
 }

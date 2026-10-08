@@ -20,12 +20,14 @@ export function zeroKpis(
 ): KpiMetric[] {
   return keys.map(({ key, label }) => {
     const metric = getMetric(key);
+    const isRate = metric.format === "percent";
     return {
       key,
       label: label ?? metric.label,
       value: 0,
       previousValue: null,
       deltaPercent: null,
+      deltaUnit: isRate ? "pp" : "percent",
       format: metric.format,
     };
   });
@@ -40,6 +42,7 @@ export function emptyOverview(): OverviewData {
     comparison: [],
     platformSummaries: [],
     contentBuckets: [],
+    medians: [],
     webStats: { kpis: zeroKpis(WEB_KPIS), points: [] },
     topArticles: [],
     topicRecommendations: [],
@@ -92,7 +95,7 @@ export function emptyPosts(page: number, pageSize: number): Paged<never> {
 export function emptyPublishingTime(): PublishingTimeData {
   return {
     points: zeroHourPoints(),
-    totals: { content: 0, views: 0, engagements: 0 },
+    totals: { content: 0, impressions: 0, engagements: 0 },
   };
 }
 

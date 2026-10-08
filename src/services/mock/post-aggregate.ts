@@ -23,6 +23,12 @@ export function filterByCluster(posts: Post[], cluster?: string): Post[] {
   return posts.filter((post) => post.cluster === cluster);
 }
 
+/** Filter tagging (section Data Platform) — "all"/undefined = tanpa filter. */
+export function filterByTag(posts: Post[], tagging?: string): Post[] {
+  if (!tagging || tagging === "all") return posts;
+  return posts.filter((post) => post.tagging === tagging);
+}
+
 /**
  * Agregasi harian berbasis daftar konten (bukan deret akun) sehingga
  * filter cluster ikut memengaruhi KPI/trend/comparison secara konsisten.

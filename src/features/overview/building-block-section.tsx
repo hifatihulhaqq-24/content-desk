@@ -1,65 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  BarChart,
-  type BarRow,
-  type BarShapeInput,
-} from "@/components/data/bar-chart";
+import { useState } from "react";
 import { ChartCard } from "@/components/data/chart-card";
-import { seriesColor } from "@/components/data/chart-common";
-import { Button } from "@/components/ui/button";
-import { BUILDING_BLOCK_LABELS } from "@/config/content-elements";
+import { PlatformChips } from "./platform-chips";
 import { getQueryUiState, useBuildingBlock } from "@/hooks/use-analytics";
-import { formatCompact, formatNumber } from "@/lib/format";
-import type { BuildingBlockMetric, PlatformId } from "@/types/analytics";
-import { ScopeSelects } from "./scope-selects";
-
-const METRICS: { key: BuildingBlockMetric; label: string }[] = [
-  { key: "content", label: "Total Content" },
-  { key: "views", label: "Total Views" },
-  { key: "engagements", label: "Total Engagements" },
-];
-
-const Y_AXIS_WIDTH = 96;
-const VALUE_LABEL_MARGIN = 72;
-
-const COUNT_LIKE_METRICS = new Set<BuildingBlockMetric>([
-  "content",
-  "viewsPerContent",
-  "engagementsPerContent",
-]);
+import { formatCompact, formatNumber, formatPercent } from "@/lib/format";
+import type { PlatformId } from "@/types/analytics";
+import { BUILDING_BLOCK_LABELS } from "@/config/content-elements";
 
 interface BuildingBlockSectionProps {
   cluster: string;
 }
 
-function formatMetricValue(metric: BuildingBlockMetric, value: number): string {
-  return COUNT_LIKE_METRICS.has(metric) ? formatNumber(value) : formatCompact(value);
-}
-
-function renderValueLabel(metric: BuildingBlockMetric) {
-  return function ValueLabel({ row, x, y, width, height }: BarShapeInput) {
-    return (
-      <text
-        x={x + width + 8}
-        y={y + height / 2}
-        dominantBaseline="middle"
-        fontSize={11}
-        className="fill-foreground font-semibold tabular-nums"
-      >
-        {formatMetricValue(metric, Number(row.value ?? 0))}
-      </text>
-    );
-  };
-}
-
 export function BuildingBlockSection({ cluster }: BuildingBlockSectionProps) {
-  const [platform, setPlatform] = useState<PlatformId | "all">("all");
-  const [accountId, setAccountId] = useState<string>("all");
-  const [metric, setMetric] = useState<BuildingBlockMetric>("views");
-
-  const query = useBuildingBlock({ platform, accountId, cluster });
+  const [platforms, setPlatforms] = useState<PlatformId[]>([]);
+  const query = useBuildingBlock({ platforms, cluster, accountId: "all", platform: "all" });
   const status = getQueryUiState(query, (data) =>
     data.blocks.every((block) => block.content === 0)
   );
@@ -68,89 +23,73 @@ export function BuildingBlockSection({ cluster }: BuildingBlockSectionProps) {
   const data = query.data;
   const isEmpty = status === "empty";
 
-  const metricLabel =
-    METRICS.find((item) => item.key === metric)?.label ?? "Total Views";
-
-  const rows: BarRow[] = useMemo(
-    () =>
-      [...(data?.blocks ?? [])]
-        .sort((a, b) => b[metric] - a[metric])
-        .map((block) => ({
-          name: BUILDING_BLOCK_LABELS[block.block],
-          value: block[metric],
-        })),
-    [data, metric]
-  );
-
-  const barColors = Object.fromEntries(
-    rows.map((row, index) => [String(row.name), seriesColor(index)])
+  const rows = [...(data?.blocks ?? [])].sort(
+    (a, b) => b.impressions - a.impressions
   );
 
   return (
-    <ChartCard
-      title="Building Block Analysis"
-      titleClassName="text-lg font-semibold"
-      description="Top 5 penyusun konten"
-      status={cardStatus}
-      isEmpty={isEmpty}
-      onRetry={() => void query.refetch()}
-      emptyTitle="Belum ada konten"
-      emptyMessage="Belum ada konten terbit pada rentang tanggal ini."
-      height={260}
-      filter={
-        <div
-          role="group"
-          aria-label="Pilih metrik building block"
-          className="flex flex-wrap rounded-lg border p-0.5"
-        >
-          {METRICS.map((item) => (
-            <Button
-              key={item.key}
-              type="button"
-              size="sm"
-              variant={metric === item.key ? "secondary" : "ghost"}
-              aria-pressed={metric === item.key}
-              onClick={() => setMetric(item.key)}
-              className="h-7 px-2.5 text-xs"
-            >
-              {item.label}
-            </Button>
-          ))}
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Building Block Analysis</h2>
+          <p className="text-xs text-muted-foreground">
+            5 elemen penyusun konten teratas · urut berdasarkan Impression.
+          </p>
         </div>
-      }
-      footer={
-        !isEmpty && (
-          <span>
-            Diurutkan menurut {metricLabel.toLowerCase()} · Hover bar untuk
-            detail
-          </span>
-        )
-      }
-    >
-      <div className="flex flex-1 flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <ScopeSelects
-            platform={platform}
-            accountId={accountId}
-            onPlatformChange={setPlatform}
-            onAccountChange={setAccountId}
-            label="building block"
-          />
-        </div>
-
-        <BarChart
-          data={rows}
-          xKey="name"
-          bars={[{ key: "value", label: metricLabel }]}
-          orientation="horizontal"
-          barColors={barColors}
-          height={200}
-          showLegend={false}
-          yAxisWidth={Y_AXIS_WIDTH}
-          marginRight={VALUE_LABEL_MARGIN}
-          renderBarShape={renderValueLabel(metric)}
-        />
+        <PlatformChips value={platforms} onChange={setPlatforms} label="Filter platform" />
       </div>
-    </ChartCard>
+
+      <ChartCard
+        title="Building Block"
+        titleClassName="text-sm font-semibold sr-only"
+        status={cardStatus}
+        isEmpty={isEmpty}
+        onRetry={() => void query.refetch()}
+        emptyTitle="Belum ada konten"
+        emptyMessage="Belum ada konten terbit pada rentang tanggal ini."
+        height="content"
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th className="pb-2 text-left font-medium">#</th>
+                <th className="pb-2 text-left font-medium">Building Block</th>
+                <th className="pb-2 text-right font-medium">Total konten</th>
+                <th className="pb-2 text-right font-medium">Impression</th>
+                <th className="pb-2 text-right font-medium">Engagement</th>
+                <th className="pb-2 text-right font-medium">Engagement Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((block, index) => (
+                <tr key={block.block} className="border-t">
+                  <td className="py-2 pr-2 text-muted-foreground tabular-nums">
+                    {index + 1}
+                  </td>
+                  <td className="py-2 pr-3 font-medium">
+                    {BUILDING_BLOCK_LABELS[block.block]}
+                  </td>
+                  <td className="py-2 pr-2 text-right tabular-nums">
+                    {formatNumber(block.content)}
+                  </td>
+                  <td className="py-2 pr-2 text-right tabular-nums">
+                    {formatCompact(block.impressions)}
+                  </td>
+                  <td className="py-2 pr-2 text-right tabular-nums">
+                    {formatCompact(block.engagements)}
+                  </td>
+                  <td className="py-2 text-right tabular-nums">
+                    {block.engagementRate !== null
+                      ? formatPercent(block.engagementRate)
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </ChartCard>
+    </div>
   );
 }

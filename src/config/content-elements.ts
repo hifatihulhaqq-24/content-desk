@@ -1,11 +1,15 @@
 import type { BuildingBlockId, ContentFormat } from "@/types/analytics";
 
 /** Urutan segmen Content Type Analysis. */
-export const CONTENT_FORMATS: ContentFormat[] = ["Gambar", "Video", "Carousel"];
+export const CONTENT_FORMATS: ContentFormat[] = [
+  "Single Image",
+  "Video",
+  "Carousel",
+];
 
 /** Warna segmen donut per format (selaras seri chart --chart-1/2/3). */
 export const CONTENT_FORMAT_COLORS: Record<ContentFormat, string> = {
-  Gambar: "var(--color-chart-1)",
+  "Single Image": "var(--color-chart-1)",
   Video: "var(--color-chart-2)",
   Carousel: "var(--color-chart-3)",
 };

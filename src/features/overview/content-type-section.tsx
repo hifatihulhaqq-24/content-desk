@@ -1,129 +1,141 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ChartCard } from "@/components/data/chart-card";
 import { DonutChart, type DonutDatum } from "@/components/data/donut-chart";
-import { Button } from "@/components/ui/button";
+import { PlatformChips } from "./platform-chips";
 import { CONTENT_FORMAT_COLORS } from "@/config/content-elements";
 import { getQueryUiState, useContentType } from "@/hooks/use-analytics";
 import { formatCompact, formatNumber } from "@/lib/format";
-import type { ContentTypeMetric, PlatformId } from "@/types/analytics";
-import { ScopeSelects } from "./scope-selects";
-
-const METRICS: { key: ContentTypeMetric; label: string }[] = [
-  { key: "content", label: "Total Content" },
-  { key: "views", label: "Total Views" },
-  { key: "engagements", label: "Total Engagements" },
-];
+import type { PlatformId } from "@/types/analytics";
 
 interface ContentTypeSectionProps {
   cluster: string;
 }
 
-function formatMetricValue(metric: ContentTypeMetric, value: number): string {
+function formatMetricValue(metric: "content" | "impressions" | "engagements", value: number): string {
   return metric === "content" ? formatNumber(value) : formatCompact(value);
 }
 
 export function ContentTypeSection({ cluster }: ContentTypeSectionProps) {
-  const [platform, setPlatform] = useState<PlatformId | "all">("all");
-  const [accountId, setAccountId] = useState<string>("all");
-  const [metric, setMetric] = useState<ContentTypeMetric>("content");
-
-  const query = useContentType({ platform, accountId, cluster });
+  const [platforms, setPlatforms] = useState<PlatformId[]>([]);
+  const query = useContentType({ platforms, cluster, accountId: "all", platform: "all" });
   const status = getQueryUiState(query, (data) => data.totals.content === 0);
   const cardStatus =
     status === "loading" ? "pending" : status === "error" ? "error" : "success";
   const data = query.data;
   const isEmpty = status === "empty";
 
-  const metricLabel =
-    METRICS.find((item) => item.key === metric)?.label ?? "Total Content";
+  const contentSegments: DonutDatum[] =
+    (data?.formats ?? []).map((point) => ({
+      label: point.format,
+      value: point.content,
+      color: CONTENT_FORMAT_COLORS[point.format],
+    }));
+  const impressionsSegments: DonutDatum[] =
+    (data?.formats ?? []).map((point) => ({
+      label: point.format,
+      value: point.impressions,
+      color: CONTENT_FORMAT_COLORS[point.format],
+    }));
+  const engagementsSegments: DonutDatum[] =
+    (data?.formats ?? []).map((point) => ({
+      label: point.format,
+      value: point.engagements,
+      color: CONTENT_FORMAT_COLORS[point.format],
+    }));
 
-  const segments: DonutDatum[] = useMemo(
-    () =>
-      (data?.formats ?? []).map((point) => ({
-        label: point.format,
-        value: point[metric],
-        color: CONTENT_FORMAT_COLORS[point.format],
-      })),
-    [data, metric]
-  );
+  const donutFooter = (metric: "content" | "impressions" | "engagements") =>
+    !isEmpty && data ? (
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {data.formats.map((point) => (
+          <span key={point.format} className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="size-2.5 shrink-0 rounded-[2px]"
+              style={{
+                backgroundColor: CONTENT_FORMAT_COLORS[point.format],
+              }}
+            />
+            <span>{point.format}</span>
+            <span className="font-medium tabular-nums">
+              {formatMetricValue(metric, point[metric])}
+            </span>
+          </span>
+        ))}
+      </div>
+    ) : null;
 
   return (
-    <ChartCard
-      title="Content Type Analysis"
-      titleClassName="text-lg font-semibold"
-      description="Distribusi Gambar/Video/Carousel pada periode ini"
-      status={cardStatus}
-      isEmpty={isEmpty}
-      onRetry={() => void query.refetch()}
-      emptyTitle="Belum ada konten"
-      emptyMessage="Belum ada konten terbit pada rentang tanggal ini."
-      height={260}
-      filter={
-        <div
-          role="group"
-          aria-label="Pilih metrik content type"
-          className="flex flex-wrap rounded-lg border p-0.5"
-        >
-          {METRICS.map((item) => (
-            <Button
-              key={item.key}
-              type="button"
-              size="sm"
-              variant={metric === item.key ? "secondary" : "ghost"}
-              aria-pressed={metric === item.key}
-              onClick={() => setMetric(item.key)}
-              className="h-7 px-2.5 text-xs"
-            >
-              {item.label}
-            </Button>
-          ))}
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Content Type Analysis</h2>
+          <p className="text-xs text-muted-foreground">
+            Distribusi Single Image / Video / Carousel pada periode ini.
+          </p>
         </div>
-      }
-      footer={
-        !isEmpty && data && (
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {data.formats.map((point) => (
-              <span
-                key={point.format}
-                className="inline-flex items-center gap-1.5"
-              >
-                <span
-                  aria-hidden
-                  className="size-2.5 shrink-0 rounded-[2px]"
-                  style={{
-                    backgroundColor: CONTENT_FORMAT_COLORS[point.format],
-                  }}
-                />
-                <span>{point.format}</span>
-                <span className="font-medium tabular-nums">
-                  {formatMetricValue(metric, point[metric])}
-                </span>
-              </span>
-            ))}
-          </div>
-        )
-      }
-    >
-      <div className="flex flex-1 flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <ScopeSelects
-            platform={platform}
-            accountId={accountId}
-            onPlatformChange={setPlatform}
-            onAccountChange={setAccountId}
-            label="content type"
-          />
-        </div>
-
-        <DonutChart
-          data={segments}
-          centerLabel={metricLabel.toLowerCase()}
-          centerValue={data?.totals[metric] ?? 0}
-          height={200}
-        />
+        <PlatformChips value={platforms} onChange={setPlatforms} label="Filter platform" />
       </div>
-    </ChartCard>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ChartCard
+          title="Total konten"
+          titleClassName="text-sm font-semibold"
+          status={cardStatus}
+          isEmpty={isEmpty}
+          onRetry={() => void query.refetch()}
+          emptyTitle="Belum ada konten"
+          emptyMessage="Belum ada konten terbit pada rentang tanggal ini."
+          height={290}
+          footer={donutFooter("content")}
+        >
+          <DonutChart
+            data={contentSegments}
+            centerLabel="konten"
+            centerValue={data?.totals.content ?? 0}
+            height={220}
+          />
+        </ChartCard>
+
+        <ChartCard
+          title="Impression"
+          titleClassName="text-sm font-semibold"
+          status={cardStatus}
+          isEmpty={isEmpty}
+          onRetry={() => void query.refetch()}
+          emptyTitle="Belum ada konten"
+          emptyMessage="Belum ada konten terbit pada rentang tanggal ini."
+          height={290}
+          footer={donutFooter("impressions")}
+        >
+          <DonutChart
+            data={impressionsSegments}
+            centerLabel="Impression"
+            centerValue={data?.totals.impressions ?? 0}
+            height={220}
+          />
+        </ChartCard>
+
+        <ChartCard
+          title="Engagement"
+          titleClassName="text-sm font-semibold"
+          status={cardStatus}
+          isEmpty={isEmpty}
+          onRetry={() => void query.refetch()}
+          emptyTitle="Belum ada konten"
+          emptyMessage="Belum ada konten terbit pada rentang tanggal ini."
+          height={290}
+          footer={donutFooter("engagements")}
+        >
+          <DonutChart
+            data={engagementsSegments}
+            centerLabel="Engagement"
+            centerValue={data?.totals.engagements ?? 0}
+            height={220}
+          />
+        </ChartCard>
+      </div>
+    </div>
   );
 }

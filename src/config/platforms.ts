@@ -113,7 +113,7 @@ export const PLATFORMS: PlatformConfig[] = [
       "shares",
       "followersGrowth",
     ],
-    contentTypes: ["Video Pendek", "Foto", "LIVE"],
+    contentTypes: ["Video Pendek", "Foto", "Carousel", "LIVE"],
     accounts: kumparanAccounts("tt", true),
   },
   {
@@ -157,7 +157,7 @@ export const PLATFORMS: PlatformConfig[] = [
       "shares",
       "clicks",
     ],
-    contentTypes: ["Image", "Video", "Link", "Reel"],
+    contentTypes: ["Image", "Carousel", "Video", "Link", "Reel"],
     accounts: kumparanAccounts("fb", false),
   },
   {
@@ -181,7 +181,7 @@ export const PLATFORMS: PlatformConfig[] = [
       "clicks",
       "profileVisits",
     ],
-    contentTypes: ["Post", "Media", "Poll"],
+    contentTypes: ["Post", "Media", "Carousel", "Poll"],
     accounts: kumparanAccounts("x", true),
   },
 ];

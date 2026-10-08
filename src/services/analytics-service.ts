@@ -39,7 +39,7 @@ export interface AnalyticsService {
   getAccountPosts(filter: PostFilter): Promise<Paged<Post>>;
   /** Distribusi konten/tayangan/interaksi per jam (Publishing Time Analysis). */
   getPublishingTime(query: PublishingTimeQuery): Promise<PublishingTimeData>;
-  /** Distribusi per tipe konten — Gambar/Video/Carousel. */
+  /** Distribusi per tipe konten — Single Image/Video/Carousel. */
   getContentTypeAnalysis(query: ContentTypeQuery): Promise<ContentTypeData>;
   /** Top 5 building block konten (SVT/SVL/ONLINER/CAROUSEL/VIDOL). */
   getBuildingBlockAnalysis(

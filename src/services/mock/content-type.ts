@@ -14,17 +14,17 @@ import { resolveScopeAccountIds, scopeKey } from "./scope";
 const cache = new Map<string, ContentTypeData>();
 
 function emptyPoint(format: ContentFormat): ContentTypePoint {
-  return { format, content: 0, views: 0, engagements: 0, newFollowers: 0 };
+  return { format, content: 0, impressions: 0, engagements: 0 };
 }
 
 export function zeroContentType(): ContentTypeData {
   return {
     formats: CONTENT_FORMATS.map(emptyPoint),
-    totals: { content: 0, views: 0, engagements: 0, newFollowers: 0 },
+    totals: { content: 0, impressions: 0, engagements: 0 },
   };
 }
 
-/** Agregasi Content Type Analysis (Gambar/Video/Carousel) dari daftar konten. */
+/** Agregasi Content Type Analysis (Single Image/Video/Carousel) dari daftar konten. */
 export function computeContentType(query: ContentTypeQuery): ContentTypeData {
   const key = scopeKey(query);
   const cached = cache.get(key);
@@ -46,13 +46,11 @@ export function computeContentType(query: ContentTypeQuery): ContentTypeData {
     const point = byFormat.get(post.format);
     if (!point) continue;
     point.content += 1;
-    point.views += post.metrics.views;
+    point.impressions += post.metrics.impressions;
     point.engagements += engagementOf(post);
-    point.newFollowers += post.metrics.newFollowers;
     data.totals.content += 1;
-    data.totals.views += post.metrics.views;
+    data.totals.impressions += post.metrics.impressions;
     data.totals.engagements += engagementOf(post);
-    data.totals.newFollowers += post.metrics.newFollowers;
   }
 
   cache.set(key, data);

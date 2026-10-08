@@ -1,6 +1,7 @@
 import { addDays } from "date-fns";
 import type { BuildingBlockId, ContentFormat, Post } from "@/types/analytics";
 import { CLUSTERS } from "@/config/clusters";
+import { TAGGING_OPTIONS } from "@/config/tagging";
 import { findAccount, type PlatformId } from "@/config/platforms";
 import { today, toIsoDate } from "@/lib/date";
 import { dailyAt } from "./series";
@@ -11,16 +12,51 @@ const POST_WINDOW_DAYS = 180;
 /** Probabilitas akun menerbitkan konten kedua pada hari yang sama. */
 const SECOND_POST_PROBABILITY = 0.3;
 
-/** Bobot format konten per platform — semua format selalu muncul. */
-const FORMAT_WEIGHTS: Record<PlatformId, Record<ContentFormat, number>> = {
-  instagram: { Gambar: 35, Video: 35, Carousel: 30 },
-  tiktok: { Gambar: 40, Video: 45, Carousel: 15 },
-  youtube: { Gambar: 20, Video: 65, Carousel: 15 },
-  facebook: { Gambar: 45, Video: 35, Carousel: 20 },
-  x: { Gambar: 50, Video: 25, Carousel: 25 },
+/**
+ * Peta tipe konten platform → format analitik lintas platform.
+ * Format diturunkan dari tipe agar analisis post, Content Type Analysis,
+ * dan filter tipe selalu konsisten (A11).
+ */
+const TYPE_FORMAT: Record<string, ContentFormat> = {
+  Carousel: "Carousel",
+  Reels: "Video",
+  Reel: "Video",
+  "Video Pendek": "Video",
+  Video: "Video",
+  Short: "Video",
+  Live: "Video",
+  LIVE: "Video",
+  Media: "Video",
+  Image: "Single Image",
+  Foto: "Single Image",
+  Link: "Single Image",
+  Post: "Single Image",
+  Poll: "Single Image",
+  Story: "Single Image",
 };
 
-/** Bobot building block per platform — semua block selalu muncul. */
+function formatOfType(type: string): ContentFormat {
+  return TYPE_FORMAT[type] ?? "Single Image";
+}
+
+/**
+ * Bobot building block per platform. Block CAROUSEL ≡ format Carousel:
+ * pada post Carousel, building block selalu "carousel"; pada post
+ * non-Carousel, bobot "carousel" dihilangkan (dinosialisasi ulang).
+ */
+function blockWeights(
+  platform: PlatformId,
+  format: ContentFormat
+): Record<BuildingBlockId, number> {
+  const weights = { ...BLOCK_WEIGHTS[platform] };
+  (Object.keys(weights) as BuildingBlockId[]).forEach((key) => {
+    const allowed =
+      format === "Carousel" ? key === "carousel" : key !== "carousel";
+    if (!allowed) weights[key] = 0;
+  });
+  return weights;
+}
+
 const BLOCK_WEIGHTS: Record<PlatformId, Record<BuildingBlockId, number>> = {
   instagram: { svt: 15, svl: 15, onliner: 20, carousel: 35, vidol: 15 },
   tiktok: { svt: 30, svl: 25, onliner: 10, carousel: 15, vidol: 20 },
@@ -72,13 +108,14 @@ export function postsForAccount(accountId: string): Post[] {
       const hour = pickHour(accountId, platform.id, accountId, i, variant);
       const minute = randInt(0, 59, accountId, i, "m");
       const type = pick(platform.contentTypes, accountId, i, "t");
-      const format = weightedKey(FORMAT_WEIGHTS[platform.id], accountId, i, "fmt");
+      const format = formatOfType(type);
       const buildingBlock = weightedKey(
-        BLOCK_WEIGHTS[platform.id],
+        blockWeights(platform.id, format),
         accountId,
         i,
         "bb"
       );
+      const tagging = pick(TAGGING_OPTIONS, accountId, i, "tag");
       const daily = dailyAt(accountId, date);
       const quality = randRange(0.35, 3.4, accountId, i, "q");
       const reach = Math.max(50, Math.round(daily.reach * quality * 0.4));
@@ -108,6 +145,7 @@ export function postsForAccount(accountId: string): Post[] {
         type,
         format,
         buildingBlock,
+        tagging,
         caption: pick(CAPTIONS, accountId, i, "cap"),
         publishedAt: `${date}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`,
         metrics: {

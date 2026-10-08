@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowUpRight, TrendingDown } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { EmptyState, ErrorState } from "@/components/data/states";
@@ -8,17 +8,15 @@ import { PlatformIcon } from "@/components/icons/platform-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { QueryUiState } from "@/hooks/use-analytics";
 import { cn } from "@/lib/utils";
-import { formatCompact } from "@/lib/format";
+import { formatCompact, formatNumber } from "@/lib/format";
 import { EXTERNAL_LINK_PROPS, postUrl } from "@/lib/content-links";
 import type { ContentBucket, ContentBucketKey } from "@/types/analytics";
 
 const BUCKET_ICONS: Record<ContentBucketKey, ReactNode> = {
-  breakout: <TrendingUp className="size-4" aria-hidden />,
-  growing: <ArrowUpRight className="size-4" aria-hidden />,
+  highlight: <ArrowUpRight className="size-4" aria-hidden />,
   lowLight: <TrendingDown className="size-4" aria-hidden />,
 };
 
-/** Gambar dummy lokal (Unsplash bebas lisensi) di /public/mock. */
 const BUCKET_IMAGES = [
   "/mock/bucket-01.jpg",
   "/mock/bucket-02.jpg",
@@ -34,7 +32,6 @@ const BUCKET_IMAGES = [
   "/mock/bucket-12.jpg",
 ];
 
-/** Pemilihan gambar deterministik per post (stable lint hash). */
 function imageForPost(postId: string): string {
   let hash = 0;
   for (let i = 0; i < postId.length; i++) {
@@ -80,15 +77,18 @@ export function ContentBucketsSection({
 
   if (status === "loading") {
     return (
-      <div className="grid gap-4 xl:grid-cols-3">
-        {Array.from({ length: 3 }, (_, index) => (
+      <div className="grid gap-4 xl:grid-cols-2">
+        {Array.from({ length: 2 }, (_, index) => (
           <BucketSkeleton key={index} />
         ))}
       </div>
     );
   }
 
-  if (status === "empty" || buckets.every((bucket) => bucket.posts.length === 0)) {
+  if (
+    status === "empty" ||
+    buckets.filter((bucket) => bucket.posts.length > 0).length === 0
+  ) {
     return (
       <EmptyState
         title="Belum ada konten"
@@ -97,9 +97,11 @@ export function ContentBucketsSection({
     );
   }
 
+  const displayBuckets = buckets.filter((bucket) => bucket.key === "highlight" || bucket.key === "lowLight");
+
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
-      {buckets.map((bucket) => (
+    <div className="grid gap-4 xl:grid-cols-2">
+      {displayBuckets.map((bucket) => (
         <section
           key={bucket.key}
           className="flex flex-col rounded-xl bg-card p-4 text-card-foreground shadow-xs"
@@ -109,9 +111,10 @@ export function ContentBucketsSection({
               <span
                 className={cn(
                   "flex size-6 items-center justify-center rounded-md",
-                  bucket.key === "breakout" && "bg-primary/10 text-primary",
-                  bucket.key === "growing" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-                  bucket.key === "lowLight" && "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  bucket.key === "highlight" &&
+                    "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                  bucket.key === "lowLight" &&
+                    "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                 )}
               >
                 {BUCKET_ICONS[bucket.key]}
@@ -134,43 +137,68 @@ export function ContentBucketsSection({
             />
           ) : (
             <ul className="mt-3 flex-1 divide-y divide-border">
-              {bucket.posts.map((post) => (
-                <li key={post.id}>
-                  <a
-                    href={postUrl(post)}
-                    {...EXTERNAL_LINK_PROPS}
-                    className="-mx-1 group flex items-center gap-3 rounded-md px-1 py-3 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-ring"
-                  >
-                    <div className="relative size-16 shrink-0 overflow-hidden rounded-md">
-                      <Image
-                        src={imageForPost(post.id)}
-                        alt=""
-                        fill
-                        sizes="64px"
-                        className="object-cover"
-                      />
-                      <span
-                        className="absolute bottom-1 left-1 rounded bg-black/55 p-1 text-white"
-                        title={post.platform}
-                      >
-                        <PlatformIcon
-                          platform={post.platform}
-                          className="size-3.5"
+              {bucket.posts.map((post) => {
+                const ratio =
+                  bucket.medianImpressions > 0
+                    ? post.metrics.impressions / bucket.medianImpressions
+                    : 0;
+                return (
+                  <li key={post.id}>
+                    <a
+                      href={postUrl(post)}
+                      {...EXTERNAL_LINK_PROPS}
+                      className="-mx-1 group flex items-center gap-3 rounded-md px-1 py-3 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-ring"
+                    >
+                      <div className="relative size-16 shrink-0 overflow-hidden rounded-md">
+                        <Image
+                          src={imageForPost(post.id)}
+                          alt=""
+                          fill
+                          sizes="64px"
+                          className="object-cover"
                         />
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 text-sm group-hover:underline underline-offset-2">{post.caption}</p>
-                      <p className="mt-1 text-xs tabular-nums text-muted-foreground">
-                        Views{" "}
-                        <b className="font-medium text-foreground">
-                          {formatCompact(post.metrics.views)}
-                        </b>
-                      </p>
-                    </div>
-                  </a>
-                </li>
-              ))}
+                        <span
+                          className="absolute bottom-1 left-1 rounded bg-black/55 p-1 text-white"
+                          title={post.platform}
+                        >
+                          <PlatformIcon
+                            platform={post.platform}
+                            className="size-3.5"
+                          />
+                        </span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 text-sm group-hover:underline underline-offset-2">
+                          {post.caption}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs tabular-nums text-muted-foreground">
+                          <span>
+                            Impression{" "}
+                            <b className="font-medium text-foreground">
+                              {formatCompact(post.metrics.impressions)}
+                            </b>
+                          </span>
+                          <span>·</span>
+                          <span>
+                            Engagement{" "}
+                            <b className="font-medium text-foreground">
+                              {formatCompact(post.metrics.likes + post.metrics.comments + post.metrics.shares + post.metrics.saves)}
+                            </b>
+                          </span>
+                          {ratio > 0 && (
+                            <>
+                              <span>·</span>
+                              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+                                {formatNumber(ratio, 1)}×
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

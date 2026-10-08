@@ -154,16 +154,21 @@ export function buildKpis(
     const value = aggregateValue(key, agg, current);
     const previousRaw = current.days.length > 0 ? aggregateValue(key, agg, previous) : 0;
     const hasPrevious = previousRaw !== 0;
+    const isRate = format === "percent";
+    const rawDelta = hasPrevious ? value - previousRaw : null;
     const deltaPercent =
-      hasPrevious && previousRaw !== 0
-        ? ((value - previousRaw) / Math.abs(previousRaw)) * 100
-        : null;
+      rawDelta === null
+        ? null
+        : isRate
+          ? rawDelta
+          : (rawDelta / Math.abs(previousRaw)) * 100;
     return {
       key,
       label: label ?? metric.label,
       value,
       previousValue: hasPrevious ? previousRaw : null,
       deltaPercent: deltaPercent !== null ? Math.round(deltaPercent * 10) / 10 : null,
+      deltaUnit: isRate ? "pp" : "percent",
       format,
     };
   });

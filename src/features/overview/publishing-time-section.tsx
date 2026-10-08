@@ -1,167 +1,182 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { BarChart, type BarRow } from "@/components/data/bar-chart";
+import { useState } from "react";
 import { ChartCard } from "@/components/data/chart-card";
-import { Button } from "@/components/ui/button";
+import { BarChart, type BarRow } from "@/components/data/bar-chart";
 import { getQueryUiState, usePublishingTime } from "@/hooks/use-analytics";
-import { formatCompact, formatNumber, formatPercent } from "@/lib/format";
-import type { PlatformId, PublishingMetric } from "@/types/analytics";
-import { ScopeSelects } from "./scope-selects";
-
-const METRICS: { key: PublishingMetric; label: string }[] = [
-  { key: "content", label: "Total Content" },
-  { key: "views", label: "Total Views" },
-  { key: "engagements", label: "Total Engagements" },
-];
-
-const DEFAULT_BAR_COLOR = "color-mix(in oklch, var(--chart-1) 38%, transparent)";
-const HIGHLIGHT_COLOR = "var(--chart-1)";
-
-const METRIC_UNIT: Record<PublishingMetric, string> = {
-  content: "konten",
-  views: "tayangan",
-  engagements: "interaksi",
-};
+import { formatCompact, formatNumber } from "@/lib/format";
+import type { PlatformId, PublishingTimeData } from "@/types/analytics";
+import { PlatformChips } from "./platform-chips";
 
 interface PublishingTimeSectionProps {
   cluster: string;
 }
 
-function formatMetricValue(metric: PublishingMetric, value: number): string {
-  return metric === "content" ? formatNumber(value) : formatCompact(value);
+const HIGHLIGHT_COLOR = "var(--chart-1)";
+const DEFAULT_BAR_COLOR = "color-mix(in oklch, var(--chart-1) 38%, transparent)";
+
+function chartRows(
+  points: PublishingTimeData["points"],
+  metric: "content" | "impressions" | "engagements"
+): BarRow[] {
+  return points.map((point) => ({
+    label: point.label,
+    value: point[metric],
+  }));
+}
+
+function topThreeLabels(
+  points: PublishingTimeData["points"],
+  metric: "content" | "impressions" | "engagements"
+): string[] {
+  return [...points]
+    .sort((a, b) => b[metric] - a[metric])
+    .slice(0, 3)
+    .map((point) => point.label);
 }
 
 export function PublishingTimeSection({ cluster }: PublishingTimeSectionProps) {
-  const [platform, setPlatform] = useState<PlatformId | "all">("all");
-  const [accountId, setAccountId] = useState<string>("all");
-  const [metric, setMetric] = useState<PublishingMetric>("content");
-
-  const query = usePublishingTime({ platform, accountId, cluster });
+  const [platforms, setPlatforms] = useState<PlatformId[]>([]);
+  const query = usePublishingTime({ platforms, cluster, accountId: "all", platform: "all" });
   const status = getQueryUiState(query, (data) => data.totals.content === 0);
   const cardStatus =
     status === "loading" ? "pending" : status === "error" ? "error" : "success";
   const data = query.data;
   const isEmpty = status === "empty";
+  const points = data?.points ?? [];
 
-  const points = useMemo(() => data?.points ?? [], [data]);
-  const metricLabel =
-    METRICS.find((item) => item.key === metric)?.label ?? "Total Content";
+  const bestByImpressions = topThreeLabels(points, "impressions")[0];
 
-  const bestHours = useMemo(
-    () =>
-      [...points]
-        .sort((a, b) => b[metric] - a[metric])
-        .slice(0, 3),
-    [points, metric]
-  );
+  const contentRows = chartRows(points, "content");
+  const impressionsRows = chartRows(points, "impressions");
+  const engagementsRows = chartRows(points, "engagements");
 
-  const highlightLabels = useMemo(
-    () => new Set(bestHours.map((point) => point.label)),
-    [bestHours]
-  );
+  const contentTop = new Set(topThreeLabels(points, "content"));
+  const impressionsTop = new Set(topThreeLabels(points, "impressions"));
+  const engagementsTop = new Set(topThreeLabels(points, "engagements"));
 
-  const rows: BarRow[] = points.map((point) => ({
-    label: point.label,
-    value: point[metric],
-  }));
-
-  const barColors = Object.fromEntries(
-    rows.map((row) => [
-      String(row.label),
-      highlightLabels.has(String(row.label))
-        ? HIGHLIGHT_COLOR
-        : DEFAULT_BAR_COLOR,
-    ])
-  );
+  const barColors = (
+    rows: BarRow[],
+    topSet: Set<string>
+  ): Record<string, string> =>
+    Object.fromEntries(
+      rows.map((row) => [
+        String(row.label),
+        topSet.has(String(row.label)) ? HIGHLIGHT_COLOR : DEFAULT_BAR_COLOR,
+      ])
+    );
 
   return (
-    <ChartCard
-      title="Publishing Time Analysis"
-      titleClassName="text-lg font-semibold"
-      description={`Distribusi ${metricLabel.toLowerCase()} per jam (07.00–21.00) pada periode ini`}
-      status={cardStatus}
-      isEmpty={isEmpty}
-      onRetry={() => void query.refetch()}
-      emptyTitle="Belum ada konten"
-      emptyMessage="Belum ada konten terbit pada rentang tanggal ini."
-      height={320}
-      filter={
-        <div
-          role="group"
-          aria-label="Pilih metrik publishing time"
-          className="flex flex-wrap rounded-lg border p-0.5"
-        >
-          {METRICS.map((item) => (
-            <Button
-              key={item.key}
-              type="button"
-              size="sm"
-              variant={metric === item.key ? "secondary" : "ghost"}
-              aria-pressed={metric === item.key}
-              onClick={() => setMetric(item.key)}
-              className="h-7 px-2.5 text-xs"
-            >
-              {item.label}
-            </Button>
-          ))}
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Publishing Time Analysis</h2>
+          <p className="text-xs text-muted-foreground">
+            Per jam tayang (07.00–21.00). 3 jam terbaik ditandai warna gelap.
+            Terbaik Impression:{" "}
+            {bestByImpressions ? bestByImpressions : "—"}
+          </p>
         </div>
-      }
-      footer={
-        !isEmpty && bestHours.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">
-              Jam posting terbaik ({metricLabel.toLowerCase()}):
-            </span>
-            {bestHours.map((point) => (
-              <span
-                key={point.hour}
-                className="inline-flex items-center gap-1.5 rounded-full border bg-accent/60 px-2 py-0.5 text-xs font-medium tabular-nums"
-              >
-                <span className="text-foreground">{point.label}</span>
-                <span className="text-muted-foreground">
-                  {formatMetricValue(metric, point[metric])}{" "}
-                  {METRIC_UNIT[metric]}
-                </span>
-                <span className="text-primary">
-                  {formatPercent(
-                    points.length > 0
-                      ? (point[metric] /
-                          Math.max(
-                            1,
-                            points.reduce((sum, item) => sum + item[metric], 0)
-                          )) *
-                        100
-                      : 0
-                  )}
-                </span>
-              </span>
-            ))}
-          </div>
-        )
-      }
-    >
-      <div className="flex flex-1 flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <ScopeSelects
-            platform={platform}
-            accountId={accountId}
-            onPlatformChange={setPlatform}
-            onAccountChange={setAccountId}
-            label="publishing time"
-          />
-        </div>
-
-        <BarChart
-          data={rows}
-          xKey="label"
-          bars={[{ key: "value", label: metricLabel }]}
-          orientation="vertical"
-          barColors={barColors}
-          height={240}
-          showLegend={false}
-        />
+        <PlatformChips value={platforms} onChange={setPlatforms} label="Filter platform" />
       </div>
-    </ChartCard>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ChartCard
+          title="Total konten"
+          titleClassName="text-sm font-semibold"
+          status={cardStatus}
+          isEmpty={isEmpty}
+          onRetry={() => void query.refetch()}
+          emptyTitle="Belum ada konten"
+          emptyMessage="Belum ada konten terbit pada rentang tanggal ini."
+          height={280}
+          footer={
+            !isEmpty && data && (
+              <div className="text-xs text-muted-foreground">
+                Total:{" "}
+                <span className="font-medium tabular-nums text-foreground">
+                  {formatNumber(data.totals.content)}
+                </span>{" "}
+                konten
+              </div>
+            )
+          }
+        >
+          <BarChart
+            data={contentRows}
+            xKey="label"
+            bars={[{ key: "value", label: "Total konten" }]}
+            orientation="vertical"
+            barColors={barColors(contentRows, contentTop)}
+            height={240}
+            showLegend={false}
+          />
+        </ChartCard>
+
+        <ChartCard
+          title="Impression"
+          titleClassName="text-sm font-semibold"
+          status={cardStatus}
+          isEmpty={isEmpty}
+          onRetry={() => void query.refetch()}
+          emptyTitle="Belum ada konten"
+          emptyMessage="Belum ada konten terbit pada rentang tanggal ini."
+          height={280}
+          footer={
+            !isEmpty && data && (
+              <div className="text-xs text-muted-foreground">
+                Total:{" "}
+                <span className="font-medium tabular-nums text-foreground">
+                  {formatCompact(data.totals.impressions)}
+                </span>{" "}
+                Impression
+              </div>
+            )
+          }
+        >
+          <BarChart
+            data={impressionsRows}
+            xKey="label"
+            bars={[{ key: "value", label: "Impression" }]}
+            orientation="vertical"
+            barColors={barColors(impressionsRows, impressionsTop)}
+            height={240}
+            showLegend={false}
+          />
+        </ChartCard>
+
+        <ChartCard
+          title="Engagement"
+          titleClassName="text-sm font-semibold"
+          status={cardStatus}
+          isEmpty={isEmpty}
+          onRetry={() => void query.refetch()}
+          emptyTitle="Belum ada konten"
+          emptyMessage="Belum ada konten terbit pada rentang tanggal ini."
+          height={280}
+          footer={
+            !isEmpty && data && (
+              <div className="text-xs text-muted-foreground">
+                Total:{" "}
+                <span className="font-medium tabular-nums text-foreground">
+                  {formatCompact(data.totals.engagements)}
+                </span>{" "}
+                Engagement
+              </div>
+            )
+          }
+        >
+          <BarChart
+            data={engagementsRows}
+            xKey="label"
+            bars={[{ key: "value", label: "Engagement" }]}
+            orientation="vertical"
+            barColors={barColors(engagementsRows, engagementsTop)}
+            height={240}
+            showLegend={false}
+          />
+        </ChartCard>
+      </div>
+    </div>
   );
 }

@@ -13,7 +13,6 @@ export function sparklineFromTrend(
 export function overviewIsEmpty(data: OverviewData): boolean {
   return (
     data.trend.points.length === 0 &&
-    data.topArticles.length === 0 &&
     data.platformSummaries.length === 0
   );
 }

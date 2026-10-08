@@ -15,11 +15,12 @@ import type {
 import { getAnalyticsService } from "@/services";
 import { useDateRange } from "./use-date-range";
 
-export function useOverview(cluster: string) {
+export function useOverview(cluster: string, tagging?: string) {
   const { query, ready } = useDateRange();
   return useQuery({
-    queryKey: ["overview", query, cluster],
-    queryFn: () => getAnalyticsService().getOverview({ ...query, cluster }),
+    queryKey: ["overview", query, cluster, tagging ?? "all"],
+    queryFn: () =>
+      getAnalyticsService().getOverview({ ...query, cluster, tagging }),
     enabled: ready,
   });
 }
@@ -54,8 +55,10 @@ export function useAccountAnalytics(accountId: string) {
 export type AccountPostsParams = Omit<PostFilter, "accountId">;
 
 export interface Scope {
-  platform: PlatformId | "all";
-  accountId: string;
+  platform?: PlatformId | "all";
+  /** Multi-platform (chips); kosong = semua. */
+  platforms?: PlatformId[];
+  accountId?: string;
   cluster: string;
 }
 

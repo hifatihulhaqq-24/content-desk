@@ -36,13 +36,13 @@ export function zeroHourPoints(): PublishingHourPoint[] {
       hour,
       label: hourLabel(hour),
       content: 0,
-      views: 0,
+      impressions: 0,
       engagements: 0,
     };
   });
 }
 
-/** Bobot jam window 07–21 seluruh akun cakupan, rata-rata berbobot tayangan. */
+/** Bobot jam window 07–21 seluruh akun cakupan, rata-rata berbobot impression. */
 function scopeHourWeights(accountIds: string[], posts: Post[]): number[] {
   const totals = new Array(HOUR_COUNT).fill(0);
   let weightSum = 0;
@@ -50,12 +50,12 @@ function scopeHourWeights(accountIds: string[], posts: Post[]): number[] {
   for (const accountId of accountIds) {
     const found = findAccount(accountId);
     if (!found) continue;
-    const accountViews = posts.reduce(
+    const accountImpressions = posts.reduce(
       (sum, post) =>
-        post.accountId === accountId ? sum + post.metrics.views : sum,
+        post.accountId === accountId ? sum + post.metrics.impressions : sum,
       0
     );
-    const weight = accountViews > 0 ? accountViews : 1;
+    const weight = accountImpressions > 0 ? accountImpressions : 1;
     const weights = accountHourWeights(accountId, found.platform.id);
     for (let index = 0; index < HOUR_COUNT; index += 1) {
       totals[index] += weights[HOUR_START + index] * weight;
@@ -138,7 +138,7 @@ export function computePublishingTime(
     query.cluster
   ).filter(isWithinWindow);
 
-  const totals = { content: 0, views: 0, engagements: 0 };
+  const totals = { content: 0, impressions: 0, engagements: 0 };
   let data: PublishingTimeData;
 
   if (posts.length === 0) {
@@ -146,24 +146,24 @@ export function computePublishingTime(
   } else {
     const aggregate = aggregatePosts(posts, current);
     totals.content = aggregate.postsCount;
-    totals.views = Math.round(aggregate.totals.views);
+    totals.impressions = Math.round(aggregate.totals.impressions);
     totals.engagements = Math.round(aggregate.totals.engagement);
 
     const contentWeights = scopeHourWeights(accountIds, posts);
-    const viewWeights = normalize(
+    const impressionWeights = normalize(
       contentWeights.map((weight, index) =>
         weight * hourPerformance(HOUR_START + index)
       )
     );
     const engagementWeights = normalize(
-      viewWeights.map((weight, index) => {
+      impressionWeights.map((weight, index) => {
         const hour = HOUR_START + index;
         return weight * (0.9 + rand01("engagement", hour, key) * 0.2);
       })
     );
 
     const content = allocate(totals.content, contentWeights, 1);
-    const views = allocate(totals.views, viewWeights, 1);
+    const impressions = allocate(totals.impressions, impressionWeights, 1);
     const engagements = allocate(totals.engagements, engagementWeights, 1);
 
     data = {
@@ -173,7 +173,7 @@ export function computePublishingTime(
           hour,
           label: hourLabel(hour),
           content: content[index],
-          views: views[index],
+          impressions: impressions[index],
           engagements: engagements[index],
         };
       }),

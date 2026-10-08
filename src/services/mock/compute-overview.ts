@@ -1,5 +1,7 @@
+import { addDays } from "date-fns";
 import type {
   ContentBucket,
+  MedianInsight,
   OverviewData,
   OverviewQuery,
   PlatformComparisonPoint,
@@ -8,22 +10,23 @@ import type {
 } from "@/types/analytics";
 import { VISIBLE_PLATFORMS } from "@/config/platforms";
 import { toIsoDate } from "@/lib/date";
+import { buildKpis, buildTrend, rangesFromQuery, type RangeAggregate } from "./aggregate";
 import {
-  buildKpis,
-  buildTrend,
-  rangesFromQuery,
-  type RangeAggregate,
-} from "./aggregate";
-import { aggregatePosts, filterByCluster } from "./post-aggregate";
+  aggregatePosts,
+  engagementOf,
+  filterByCluster,
+  filterByTag,
+} from "./post-aggregate";
 import { postsInRange } from "./posts";
+import { isoToDayIndex } from "./random";
 import { topArticlesInRange } from "./articles";
 import { computeWebStats } from "./web";
 import { topicsForCluster } from "./topics";
 
 export const OVERVIEW_KPIS = [
-  { key: "views", label: "Total tayangan" },
-  { key: "engagement", label: "Interaksi pembaca" },
-  { key: "engagementRate", label: "Tingkat interaksi" },
+  { key: "impressions", label: "Impression" },
+  { key: "engagement", label: "Engagement" },
+  { key: "engagementRate", label: "Engagement Rate" },
   { key: "posts", label: "Jumlah konten" },
 ];
 
@@ -40,21 +43,24 @@ const COMPARISON_METRICS = ["reach", "impressions", "engagement", "views"];
 
 const BUCKET_LIMIT = 5;
 
+/** Ambang Highlight: impression ≥ 3× median cluster (catetan Prambanan 8 Okt 2026). */
+const HIGHLIGHT_MULTIPLIER = 3;
+/** Ambang Low Light: impression < 0,5× median cluster. */
+const LOW_LIGHT_MULTIPLIER = 0.5;
+
+/** Window standar cluster: median per minggu selalu 8 minggu terakhir. */
+const STANDARD_WEEKS = 8;
+
 const BUCKET_DEFS = [
   {
-    key: "breakout" as const,
-    label: "Breakout",
-    description: "Konten dengan tayangan jauh di atas performa biasanya.",
-  },
-  {
-    key: "growing" as const,
-    label: "Masih Bertumbuh",
-    description: "Konten yang mulai menarik perhatian pembaca.",
+    key: "highlight" as const,
+    label: "Highlight",
+    description: "Impression ≥ 3× median cluster pada periode ini.",
   },
   {
     key: "lowLight" as const,
     label: "Low Light",
-    description: "Konten dengan performa rendah di minggu ini.",
+    description: "Impression terendah dibanding median cluster pada periode ini.",
   },
 ];
 
@@ -72,64 +78,145 @@ function median(values: number[]): number {
 }
 
 function classifyBuckets(posts: Post[]): ContentBucket[] {
-  const byViewsDesc = [...posts].sort(
-    (a, b) => b.metrics.views - a.metrics.views
+  const byImprDesc = [...posts].sort(
+    (a, b) => b.metrics.impressions - a.metrics.impressions
   );
-  const views = byViewsDesc.map((post) => post.metrics.views);
-  const med = median(views);
+  const impressions = byImprDesc.map((post) => post.metrics.impressions);
+  const med = median(impressions);
 
-  let breakout: Post[] = [];
-  let growing: Post[] = [];
+  let highlight: Post[] = [];
   let lowLight: Post[] = [];
 
   if (posts.length >= 6) {
-    breakout = byViewsDesc.filter((post) => post.metrics.views >= med * 2);
-    growing = byViewsDesc.filter(
-      (post) => post.metrics.views >= med && post.metrics.views < med * 2
+    highlight = byImprDesc.filter(
+      (post) => post.metrics.impressions >= med * HIGHLIGHT_MULTIPLIER
     );
-    lowLight = byViewsDesc
-      .filter((post) => post.metrics.views < med * 0.5)
+    lowLight = byImprDesc
+      .filter((post) => post.metrics.impressions < med * LOW_LIGHT_MULTIPLIER)
       .reverse();
   } else if (posts.length > 1) {
     const edge = Math.max(1, Math.ceil(posts.length / 3));
-    breakout = byViewsDesc.slice(0, edge);
-    growing = byViewsDesc.slice(edge, posts.length - edge);
-    lowLight = byViewsDesc.slice(posts.length - edge).reverse();
+    highlight = byImprDesc.slice(0, edge);
+    lowLight = byImprDesc.slice(posts.length - edge).reverse();
   } else if (posts.length === 1) {
-    breakout = byViewsDesc;
+    highlight = byImprDesc;
   }
 
   return BUCKET_DEFS.map((def) => ({
     ...def,
-    medianViews: med,
+    medianImpressions: med,
     posts:
-      def.key === "lowLight"
-        ? lowLight.slice(0, BUCKET_LIMIT)
-        : def.key === "breakout"
-          ? breakout.slice(0, BUCKET_LIMIT)
-          : growing.slice(0, BUCKET_LIMIT),
+      (def.key === "lowLight" ? lowLight : highlight).slice(0, BUCKET_LIMIT),
   }));
 }
 
-function platformViews(posts: Post[], accountIds: Set<string>): number {
-  let views = 0;
+/**
+ * Standar cluster (threshold): median dari median mingguan per konten
+ * selama 8 minggu terakhir sebelum periode berjalan (mock interim —
+ * contract final dari BE).
+ */
+function weeklyStandard(
+  posts: Post[],
+  valueOf: (post: Post) => number
+): number | null {
+  if (posts.length === 0) return null;
+  const minDay = Math.min(
+    ...posts.map((post) => isoToDayIndex(post.publishedAt.slice(0, 10)))
+  );
+  const weeks = new Map<number, number[]>();
   for (const post of posts) {
-    if (accountIds.has(post.accountId)) views += post.metrics.views;
+    const dayIndex = isoToDayIndex(post.publishedAt.slice(0, 10));
+    const week = Math.floor((dayIndex - minDay) / 7);
+    const bucket = weeks.get(week);
+    if (bucket) bucket.push(valueOf(post));
+    else weeks.set(week, [valueOf(post)]);
   }
-  return views;
+  const weekMedians = [...weeks.values()]
+    .map(median)
+    .filter((value) => value > 0);
+  return weekMedians.length > 0 ? median(weekMedians) : null;
+}
+
+function computeMedians(
+  currentPosts: Post[],
+  standardPosts: Post[]
+): MedianInsight[] {
+  const valueOf: Record<MedianInsight["key"], (post: Post) => number> = {
+    impressions: (post) => post.metrics.impressions,
+    engagements: engagementOf,
+  };
+
+  const build = (
+    key: MedianInsight["key"],
+    label: string
+  ): MedianInsight => {
+    const extract = valueOf[key];
+    const values = currentPosts.map(extract);
+    const med = median(values);
+    const standard = weeklyStandard(standardPosts, extract) ?? med;
+    const ratio = standard > 0 ? round1(med / standard) : 0;
+    const below = values.filter((value) => value < standard * 0.7).length;
+    const above = values.filter((value) => value > standard * 1.3).length;
+    const normal = Math.max(0, values.length - below - above);
+    return {
+      key,
+      label,
+      median: med,
+      threshold: standard,
+      ratioToThreshold: ratio,
+      sampleSize: values.length,
+      buckets: [
+        {
+          key: "below",
+          label: "Di bawah standar",
+          rule: "< 0,7× standar",
+          count: below,
+        },
+        {
+          key: "normal",
+          label: "Sesuai standar",
+          rule: "0,7–1,3× standar",
+          count: normal,
+        },
+        {
+          key: "above",
+          label: "Di atas standar",
+          rule: "> 1,3× standar",
+          count: above,
+        },
+      ],
+    };
+  };
+
+  return [
+    build("impressions", "Impression per konten"),
+    build("engagements", "Engagement per konten"),
+  ];
+}
+
+function platformImpressions(posts: Post[], accountIds: Set<string>): number {
+  let impressions = 0;
+  for (const post of posts) {
+    if (accountIds.has(post.accountId)) impressions += post.metrics.impressions;
+  }
+  return impressions;
 }
 
 function summarizePlatform(
   platform: (typeof VISIBLE_PLATFORMS)[number],
   previousPosts: Post[],
-  totalViews: number,
+  totalImpressions: number,
+  totalPosts: number,
   aggregate: RangeAggregate
 ): PlatformSummary {
   const ids = new Set(platform.accounts.map((account) => account.id));
-  const prevViews = platformViews(previousPosts, ids);
+  const prevImpressions = platformImpressions(previousPosts, ids);
   const growth =
-    prevViews > 0
-      ? round1(((aggregate.totals.views - prevViews) / prevViews) * 100)
+    prevImpressions > 0
+      ? round1(
+          ((aggregate.totals.impressions - prevImpressions) / prevImpressions) *
+            100
+        )
       : null;
   const engagementRate =
     aggregate.totals.reach > 0
@@ -141,13 +228,17 @@ function summarizePlatform(
     platform: platform.id,
     name: platform.name,
     color: platform.color,
-    views: aggregate.totals.views,
-    viewsSharePercent:
-      totalViews > 0 ? round1((aggregate.totals.views / totalViews) * 100) : 0,
-    viewsGrowthPercent: growth,
+    impressions: aggregate.totals.impressions,
+    impressionsSharePercent:
+      totalImpressions > 0
+        ? round1((aggregate.totals.impressions / totalImpressions) * 100)
+        : 0,
+    impressionsGrowthPercent: growth,
     engagement: aggregate.totals.engagement,
     engagementRate,
     posts: aggregate.postsCount,
+    postsSharePercent:
+      totalPosts > 0 ? round1((aggregate.postsCount / totalPosts) * 100) : 0,
   };
 }
 
@@ -171,15 +262,27 @@ export function computeOverview(query: OverviewQuery): OverviewData {
     cluster
   );
 
+  // Standar cluster: 8 minggu sebelum periode berjalan.
+  const standardFrom = toIsoDate(addDays(current.from, -7 * STANDARD_WEEKS));
+  const standardTo = toIsoDate(addDays(current.from, -1));
+  const standardPosts = filterByCluster(
+    postsInRange(allIds, standardFrom, standardTo),
+    cluster
+  );
+
   const currentAgg = aggregatePosts(currentPosts, current);
   const previousAgg = aggregatePosts(previousPosts, previous);
+
+  // Filter tagging hanya berlaku untuk section Data Platform.
+  const taggedCurrentPosts = filterByTag(currentPosts, query.tagging);
+  const taggedPreviousPosts = filterByTag(previousPosts, query.tagging);
 
   const platformAggregates = VISIBLE_PLATFORMS.map((platform) => {
     const ids = platform.accounts.map((account) => account.id);
     return {
       platform,
       aggregate: aggregatePosts(
-        currentPosts.filter((post) => ids.includes(post.accountId)),
+        taggedCurrentPosts.filter((post) => ids.includes(post.accountId)),
         current
       ),
     };
@@ -199,12 +302,22 @@ export function computeOverview(query: OverviewQuery): OverviewData {
     })
   );
 
+  const totalImpressions = platformAggregates.reduce(
+    (sum, { aggregate }) => sum + aggregate.totals.impressions,
+    0
+  );
+  const totalPosts = platformAggregates.reduce(
+    (sum, { aggregate }) => sum + aggregate.postsCount,
+    0
+  );
+
   const platformSummaries: PlatformSummary[] = platformAggregates.map(
     ({ platform, aggregate }) =>
       summarizePlatform(
         platform,
-        previousPosts,
-        currentAgg.totals.views,
+        taggedPreviousPosts,
+        totalImpressions,
+        totalPosts,
         aggregate
       )
   );
@@ -215,6 +328,7 @@ export function computeOverview(query: OverviewQuery): OverviewData {
     comparison,
     platformSummaries,
     contentBuckets: classifyBuckets(currentPosts),
+    medians: computeMedians(currentPosts, standardPosts),
     webStats: computeWebStats(current, previous),
     topArticles: topArticlesInRange(currentFrom, currentTo),
     topicRecommendations: topicsForCluster(cluster),

@@ -15,6 +15,8 @@ export interface DateRangeQuery {
 /** Query halaman Overview — date range + filter cluster ("all" bila tidak ada). */
 export interface OverviewQuery extends DateRangeQuery {
   cluster?: string;
+  /** Filter tagging untuk section Data Platform ("all" bila tidak difilter). */
+  tagging?: string;
 }
 
 export type ConnectionStatus = "connected" | "syncing" | "error";
@@ -26,6 +28,11 @@ export interface KpiMetric {
   previousValue: number | null;
   /** Persentase perubahan vs periode sebelumnya; null bila tidak tersedia. */
   deltaPercent: number | null;
+  /**
+   * Satuan delta: "percent" (relatif %) atau "pp" (percentage point,
+   * untuk metrik format percent seperti Engagement Rate).
+   */
+  deltaUnit?: "percent" | "pp";
   format: MetricFormat;
 }
 
@@ -50,7 +57,7 @@ export interface PublishingHourPoint {
   label: string;
   /** Jumlah konten terbit pada jam ini. */
   content: number;
-  views: number;
+  impressions: number;
   engagements: number;
 }
 
@@ -62,6 +69,11 @@ export interface ScopeQuery extends DateRangeQuery {
   cluster?: string;
   /** "all" bila tidak difilter. */
   platform?: PlatformId | "all";
+  /**
+   * Pilihan multi-platform (chips). Kosong = semua platform.
+   * Bila terisi, dipakai sebagai filter utama (menggantikan `platform`).
+   */
+  platforms?: PlatformId[];
   /** "all" bila seluruh akun pada cakupan. */
   accountId?: string | "all";
 }
@@ -72,36 +84,27 @@ export interface PublishingTimeData {
   points: PublishingHourPoint[];
   totals: {
     content: number;
-    views: number;
+    impressions: number;
     engagements: number;
   };
 }
 
 /** Tipe konten untuk Content Type Analysis. */
-export type ContentFormat = "Gambar" | "Video" | "Carousel";
-
-/** Metrik yang bisa dipilih di Content Type Analysis. */
-export type ContentTypeMetric =
-  | "content"
-  | "views"
-  | "engagements"
-  | "newFollowers";
+export type ContentFormat = "Single Image" | "Video" | "Carousel";
 
 export interface ContentTypePoint {
   format: ContentFormat;
   content: number;
-  views: number;
+  impressions: number;
   engagements: number;
-  newFollowers: number;
 }
 
 export interface ContentTypeData {
   formats: ContentTypePoint[];
   totals: {
     content: number;
-    views: number;
+    impressions: number;
     engagements: number;
-    newFollowers: number;
   };
 }
 
@@ -110,21 +113,13 @@ export type ContentTypeQuery = ScopeQuery;
 /** Elemen pembentuk konten untuk Building Block Analysis. */
 export type BuildingBlockId = "svt" | "svl" | "onliner" | "carousel" | "vidol";
 
-/** Metrik yang bisa dipilih di Building Block Analysis. */
-export type BuildingBlockMetric =
-  | "content"
-  | "views"
-  | "viewsPerContent"
-  | "engagements"
-  | "engagementsPerContent";
-
 export interface BuildingBlockPoint {
   block: BuildingBlockId;
   content: number;
-  views: number;
-  viewsPerContent: number;
+  impressions: number;
   engagements: number;
-  engagementsPerContent: number;
+  /** Engagement / reach × 100 pada block ini. */
+  engagementRate: number | null;
 }
 
 export interface BuildingBlockData {
@@ -138,14 +133,16 @@ export interface PlatformSummary {
   platform: PlatformId;
   name: string;
   color: string;
-  views: number;
-  /** Kontribusi tayangan terhadap total seluruh platform (%). */
-  viewsSharePercent: number;
-  /** Kenaikan tayangan dibanding periode sebelumnya (%). */
-  viewsGrowthPercent: number | null;
+  impressions: number;
+  /** Kontribusi impression terhadap total seluruh platform (%). */
+  impressionsSharePercent: number;
+  /** Kenaikan impression dibanding periode sebelumnya (%). */
+  impressionsGrowthPercent: number | null;
   engagement: number;
   engagementRate: number | null;
   posts: number;
+  /** Kontribusi jumlah konten terhadap total seluruh platform (%). */
+  postsSharePercent: number;
 }
 
 export interface PlatformComparisonPoint {
@@ -174,6 +171,8 @@ export interface Post {
   format: ContentFormat;
   /** Elemen pembentuk konten (Building Block Analysis). */
   buildingBlock: BuildingBlockId;
+  /** Label tagging konten (filter Data Platform). */
+  tagging: string;
   caption: string;
   /** ISO datetime. */
   publishedAt: string;
@@ -204,15 +203,39 @@ export interface AccountSummary {
   posts: number;
 }
 
-export type ContentBucketKey = "breakout" | "growing" | "lowLight";
+export type ContentBucketKey = "highlight" | "lowLight";
 
 export interface ContentBucket {
   key: ContentBucketKey;
   label: string;
   description: string;
-  /** Median views konten pada periode — dasar ambang klasifikasi. */
-  medianViews: number;
+  /** Median impression konten pada periode — dasar ambang klasifikasi. */
+  medianImpressions: number;
   posts: Post[];
+}
+
+/** Pita distribusi pada kartu Median (di bawah / sesuai / di atas standar). */
+export interface MedianBucket {
+  key: "below" | "normal" | "above";
+  label: string;
+  /** Aturan ambang, mis. "< 0,7× standar". */
+  rule: string;
+  count: number;
+}
+
+/** Insight Median per konten (Impression & Engagement). */
+export interface MedianInsight {
+  key: "impressions" | "engagements";
+  label: string;
+  /** Nilai tengah per konten pada periode berjalan. */
+  median: number;
+  /** Standar cluster (threshold eksternal — contract dari BE). */
+  threshold: number;
+  /** median / threshold, mis. 1,1. */
+  ratioToThreshold: number;
+  /** Jumlah konten sampel pada periode berjalan. */
+  sampleSize: number;
+  buckets: MedianBucket[];
 }
 
 export interface ArticleSummary {
@@ -245,6 +268,8 @@ export interface OverviewData {
   comparison: PlatformComparisonPoint[];
   platformSummaries: PlatformSummary[];
   contentBuckets: ContentBucket[];
+  /** Median Impression & Engagement per konten + ambang standar cluster. */
+  medians: MedianInsight[];
   webStats: WebStats;
   topArticles: ArticleSummary[];
   topicRecommendations: TopicRecommendation[];

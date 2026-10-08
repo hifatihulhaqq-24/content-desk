@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ChartCard } from "@/components/data/chart-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { QueryUiState } from "@/hooks/use-analytics";
 import { formatCompact, formatNumber } from "@/lib/format";
 import type { TopicRecommendation } from "@/types/analytics";
@@ -16,10 +15,7 @@ interface TopicRecommendationSectionProps {
   onRetry: () => void;
 }
 
-/** Jumlah topik per slide slider. */
 const SLIDE_SIZE = 3;
-
-/** Palet tombol: bg #EEF2FF, teks #4F46E5, hover #E0E7FF (indigo muda; dark → tint indigo gelap). */
 const BUTTON_PALETTE =
   "bg-[#EEF2FF] text-[#4F46E5] hover:bg-[#E0E7FF] dark:bg-indigo-500/15 dark:text-indigo-300 dark:hover:bg-indigo-500/25";
 
@@ -42,7 +38,6 @@ export function TopicRecommendationSection({
 
   const totalSlides = slides.length;
   const [slide, setSlide] = useState(0);
-  /** Clamp saat jumlah slide berubah (mis. cluster ganti) tanpa set-state di effect. */
   const activeSlide = Math.min(slide, Math.max(0, totalSlides - 1));
   const canNav = cardStatus === "success" && !isEmpty && totalSlides > 1;
 
@@ -50,7 +45,7 @@ export function TopicRecommendationSection({
     <ChartCard
       title="Topic Recommendation"
       titleClassName="text-lg font-semibold"
-      description="Daftar topik teratas yang sedang trending dan memiliki peluang tinggi untuk menarik perhatian audiens secara luas."
+      description="5 topik dengan skor tertinggi dari konten di platform & sosial media · diperbarui tiap hari."
       status={cardStatus}
       isEmpty={isEmpty}
       onRetry={onRetry}
@@ -105,6 +100,8 @@ export function TopicRecommendationSection({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {group.map((topic, index) => {
                   const rank = groupIndex * SLIDE_SIZE + index + 1;
+                  const score = Math.max(0, Math.min(100, topic.score));
+                  const isHigh = score >= 85;
                   return (
                     <div
                       key={topic.id}
@@ -123,23 +120,19 @@ export function TopicRecommendationSection({
                           </p>
                           <Badge
                             aria-label={`Skor rekomendasi ${topic.score} dari 100`}
-                            className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            className={
+                              isHigh
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"
+                            }
                           >
-                            {topic.score}
+                            Skor {topic.score}
                           </Badge>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {formatNumber(topic.contentCount)} konten ·{" "}
                           {formatCompact(topic.views)} tayangan
                         </p>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          asChild
-                          className={`mt-2 ${BUTTON_PALETTE}`}
-                        >
-                          <Link href="/create">Buat Konten</Link>
-                        </Button>
                       </div>
                     </div>
                   );

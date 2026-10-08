@@ -13,8 +13,14 @@ interface StatCardProps {
   value: number | string;
   format?: MetricFormat;
   deltaPercent?: number | null;
+  /** Satuan delta (lihat DeltaBadge): "%" atau "pp". */
+  deltaUnit?: "%" | "pp";
   /** Deret nilai untuk sparkline opsional (mis. 30 titik terakhir). */
   sparkline?: number[] | null;
+  /** Deret pembanding (periode sebelumnya) — garis putus-putus abu. */
+  previousSparkline?: number[] | null;
+  /** Label sumbu X di bawah sparkline (mis. hari: "Rab", "Kam", …). */
+  axisLabels?: string[] | null;
   /** Keterangan kecil di bawah nilai. */
   hint?: ReactNode;
   loading?: boolean;
@@ -26,7 +32,10 @@ export function StatCard({
   value,
   format = "number",
   deltaPercent = null,
+  deltaUnit = "%",
   sparkline = null,
+  previousSparkline = null,
+  axisLabels = null,
   hint,
   loading = false,
   className,
@@ -35,7 +44,7 @@ export function StatCard({
     return (
       <div
         className={cn(
-"rounded-xl bg-card p-4 text-card-foreground shadow-xs",
+          "rounded-xl bg-card p-4 text-card-foreground shadow-xs",
           className
         )}
       >
@@ -58,14 +67,30 @@ export function StatCard({
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm text-muted-foreground">{label}</p>
-        <DeltaBadge value={deltaPercent} />
+        <DeltaBadge value={deltaPercent} unit={deltaUnit} />
       </div>
       <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">
         {displayValue}
       </p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
       {sparkline && sparkline.length > 1 && (
-        <Sparkline values={sparkline} className="mt-3" />
+        <>
+          <Sparkline
+            values={sparkline}
+            previousValues={previousSparkline}
+            className="mt-3"
+          />
+          {axisLabels && axisLabels.length > 0 && (
+            <div
+              className="mt-1 flex justify-between text-[10px] leading-none text-muted-foreground tabular-nums"
+              aria-hidden
+            >
+              {axisLabels.map((labelText, index) => (
+                <span key={`${index}-${labelText}`}>{labelText}</span>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

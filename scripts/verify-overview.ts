@@ -32,16 +32,17 @@ function verifyCluster(cluster: string) {
   const labels = data.kpis.map((k) => k.label).join("|");
   check(
     `${tag} kpi labels`,
-    labels === "Total tayangan|Interaksi pembaca|Tingkat interaksi|Jumlah konten",
+    labels === "Impression|Engagement|Engagement Rate|Jumlah konten",
     labels
   );
-  check(`${tag} views>0`, data.kpis[0].value > 0, `${data.kpis[0].value}`);
+  check(`${tag} impressions>0`, data.kpis[0].value > 0, `${data.kpis[0].value}`);
   check(`${tag} engagement>0`, data.kpis[1].value > 0, `${data.kpis[1].value}`);
   check(
     `${tag} engagementRate 0..100`,
     data.kpis[2].value >= 0 && data.kpis[2].value <= 100,
     `${data.kpis[2].value}`
   );
+  check(`${tag} engagementRate delta in pp`, data.kpis[2].deltaUnit === "pp");
   check(`${tag} posts>=0`, data.kpis[3].value >= 0, `${data.kpis[3].value}`);
   check(`${tag} posts label`, data.kpis[3].label === "Jumlah konten");
 
@@ -72,7 +73,7 @@ function verifyCluster(cluster: string) {
     data.platformSummaries.length === VISIBLE_PLATFORMS.length
   );
   const shareSum = data.platformSummaries.reduce(
-    (sum, s) => sum + s.viewsSharePercent,
+    (sum, s) => sum + s.impressionsSharePercent,
     0
   );
   check(
@@ -80,26 +81,66 @@ function verifyCluster(cluster: string) {
     Math.abs(shareSum - 100) <= 1.5,
     shareSum.toFixed(1)
   );
+  const postsShareSum = data.platformSummaries.reduce(
+    (sum, s) => sum + s.postsSharePercent,
+    0
+  );
+  check(
+    `${tag} posts share sum ~100`,
+    Math.abs(postsShareSum - 100) <= 1.5,
+    postsShareSum.toFixed(1)
+  );
 
-  check(`${tag} buckets=3`, data.contentBuckets.length === 3);
+  check(`${tag} buckets=2`, data.contentBuckets.length === 2);
+  const bucketKeys = data.contentBuckets.map((b) => b.key).join("|");
+  check(
+    `${tag} bucket keys`,
+    bucketKeys === "highlight|lowLight",
+    bucketKeys
+  );
   for (const bucket of data.contentBuckets) {
     check(`${tag} ${bucket.key} <=5`, bucket.posts.length <= 5);
     for (const post of bucket.posts) {
-      const v = post.metrics.views;
-      if (bucket.medianViews > 0 && data.kpis[3].value >= 6) {
-        if (bucket.key === "breakout")
-          check(`${tag} breakout >=2x med`, v >= bucket.medianViews * 2, `${v}/${bucket.medianViews}`);
-        if (bucket.key === "growing")
+      const v = post.metrics.impressions;
+      if (bucket.medianImpressions > 0 && data.kpis[3].value >= 6) {
+        if (bucket.key === "highlight")
           check(
-            `${tag} growing 1x..2x`,
-            v >= bucket.medianViews && v < bucket.medianViews * 2,
-            `${v}/${bucket.medianViews}`
+            `${tag} highlight >=3x med`,
+            v >= bucket.medianImpressions * 3,
+            `${v}/${bucket.medianImpressions}`
           );
         if (bucket.key === "lowLight")
-          check(`${tag} lowLight <0.5x`, v < bucket.medianViews * 0.5, `${v}/${bucket.medianViews}`);
+          check(
+            `${tag} lowLight <0.5x`,
+            v < bucket.medianImpressions * 0.5,
+            `${v}/${bucket.medianImpressions}`
+          );
       }
     }
   }
+
+  check(`${tag} medians=2`, data.medians.length === 2, `${data.medians.length}`);
+  for (const insight of data.medians) {
+    check(`${tag} median ${insight.key} sample>0`, insight.sampleSize > 0, `${insight.sampleSize}`);
+    check(`${tag} median ${insight.key} value>=0`, insight.median >= 0);
+    check(`${tag} median ${insight.key} threshold>0`, insight.threshold > 0, `${insight.threshold}`);
+    const bucketSum = insight.buckets.reduce((sum, b) => sum + b.count, 0);
+    check(
+      `${tag} median ${insight.key} bucket sum==sample`,
+      bucketSum === insight.sampleSize,
+      `${bucketSum}/${insight.sampleSize}`
+    );
+    check(`${tag} median ${insight.key} 3 buckets`, insight.buckets.length === 3);
+  }
+
+  // Filter tagging hanya memengaruhi Data Platform.
+  const plain = computeOverview({ from, to, cluster: "News" });
+  const tagged = computeOverview({ from, to, cluster: "News", tagging: "Nasional" });
+  check(
+    `${tag} tagging changes platform summaries`,
+    JSON.stringify(tagged.platformSummaries) !==
+      JSON.stringify(plain.platformSummaries)
+  );
   const totalBucketPosts = data.contentBuckets.reduce(
     (sum, b) => sum + b.posts.length,
     0
@@ -137,7 +178,7 @@ function verifyCluster(cluster: string) {
     );
   }
 
-  check(`${tag} topics=15`, data.topicRecommendations.length === 15, `${data.topicRecommendations.length}`);
+  check(`${tag} topics=5`, data.topicRecommendations.length === 5, `${data.topicRecommendations.length}`);
   for (const t of data.topicRecommendations) {
     check(`${tag} topic score 0..100`, t.score >= 0 && t.score <= 100);
     check(`${tag} topic count>0`, t.contentCount > 0);
@@ -193,21 +234,21 @@ function verifyPublishingTime() {
     );
     check(
       `${tag} totals>0`,
-      data.totals.content > 0 && data.totals.views > 0 && data.totals.engagements > 0,
+      data.totals.content > 0 && data.totals.impressions > 0 && data.totals.engagements > 0,
       JSON.stringify(data.totals)
     );
     for (const point of data.points) {
       check(`${tag} ${point.label} content>=1`, point.content >= 1, `${point.content}`);
-      check(`${tag} ${point.label} views>=1`, point.views >= 1, `${point.views}`);
+      check(`${tag} ${point.label} impressions>=1`, point.impressions >= 1, `${point.impressions}`);
       check(
         `${tag} ${point.label} engagements>=1`,
         point.engagements >= 1,
         `${point.engagements}`
       );
     }
-    const sum = (key: "content" | "views" | "engagements") =>
+    const sum = (key: "content" | "impressions" | "engagements") =>
       data.points.reduce((total, point) => total + point[key], 0);
-    check(`${tag} views sum==total`, sum("views") === data.totals.views, `${sum("views")}/${data.totals.views}`);
+    check(`${tag} impressions sum==total`, sum("impressions") === data.totals.impressions, `${sum("impressions")}/${data.totals.impressions}`);
     check(
       `${tag} engagements sum==total`,
       sum("engagements") === data.totals.engagements,
@@ -277,18 +318,17 @@ function verifyContentType() {
       `${data.formats.reduce((sum, p) => sum + p.content, 0)}/${data.totals.content}`
     );
     check(
-      `${tag} views sum==totals`,
-      data.formats.reduce((sum, point) => sum + point.views, 0) ===
-        data.totals.views
+      `${tag} impressions sum==totals`,
+      data.formats.reduce((sum, point) => sum + point.impressions, 0) ===
+        data.totals.impressions
     );
     check(
       `${tag} non-negative`,
       data.formats.every(
         (point) =>
           point.content >= 0 &&
-          point.views >= 0 &&
-          point.engagements >= 0 &&
-          point.newFollowers >= 0
+          point.impressions >= 0 &&
+          point.engagements >= 0
       )
     );
     if (scope.name === "all") {
@@ -298,7 +338,6 @@ function verifyContentType() {
         data.formats.every((point) => point.content > 0),
         data.formats.map((p) => `${p.format}:${p.content}`).join(" ")
       );
-      check(`${tag} newFollowers>0`, data.totals.newFollowers > 0);
     }
   }
 }
@@ -344,19 +383,16 @@ function verifyBuildingBlock() {
     );
     for (const point of data.blocks) {
       check(
-        `${tag} ${point.block} avg consistency`,
-        point.content > 0
-          ? point.viewsPerContent === Math.round(point.views / point.content)
-          : point.viewsPerContent === 0,
-        `${point.viewsPerContent} vs ${point.views}/${point.content}`
-      );
-      check(
         `${tag} ${point.block} non-negative`,
         point.content >= 0 &&
-          point.views >= 0 &&
-          point.engagements >= 0 &&
-          point.viewsPerContent >= 0 &&
-          point.engagementsPerContent >= 0
+          point.impressions >= 0 &&
+          point.engagements >= 0
+      );
+      check(
+        `${tag} ${point.block} engagementRate sane`,
+        point.engagementRate === null ||
+          (point.engagementRate >= 0 && point.engagementRate <= 100),
+        `${point.engagementRate}`
       );
     }
     if (scope.name === "all") {
@@ -447,7 +483,7 @@ check("empty articles", empty.topArticles.length === 0);
 
 const emptyPt = emptyPublishingTime();
 check("empty pt points=15", emptyPt.points.length === 15, `${emptyPt.points.length}`);
-check("empty pt totals=0", emptyPt.totals.content === 0 && emptyPt.totals.views === 0);
+check("empty pt totals=0", emptyPt.totals.content === 0 && emptyPt.totals.impressions === 0);
 
 const emptyCt = emptyContentType();
 check(
@@ -455,21 +491,21 @@ check(
   emptyCt.formats.length === CONTENT_FORMATS.length,
   `${emptyCt.formats.length}`
 );
-check("empty ct totals=0", emptyCt.totals.content === 0 && emptyCt.totals.newFollowers === 0);
+check("empty ct totals=0", emptyCt.totals.content === 0 && emptyCt.totals.impressions === 0);
 
 const emptyBb = emptyBuildingBlock();
 check("empty bb blocks=5", emptyBb.blocks.length === BUILDING_BLOCKS.length, `${emptyBb.blocks.length}`);
 check(
   "empty bb zeros",
-  emptyBb.blocks.every((point) => point.content === 0 && point.viewsPerContent === 0)
+  emptyBb.blocks.every((point) => point.content === 0 && point.impressions === 0)
 );
 
 console.log(
-  `\nall: views=${all.kpis[0].value} engagement=${all.kpis[1].value} er=${all.kpis[2].value} posts=${allPosts}`
+  `\nall: impressions=${all.kpis[0].value} engagement=${all.kpis[1].value} er=${all.kpis[2].value} posts=${allPosts}`
 );
 for (const [cluster, data] of perCluster) {
   console.log(
-    `  ${cluster.padEnd(14)} views=${String(data.kpis[0].value).padStart(9)} posts=${String(data.kpis[3].value).padStart(3)} buckets=${data.contentBuckets
+    `  ${cluster.padEnd(14)} impr=${String(data.kpis[0].value).padStart(9)} posts=${String(data.kpis[3].value).padStart(3)} buckets=${data.contentBuckets
       .map((b) => b.posts.length)
       .join("/")}`
   );

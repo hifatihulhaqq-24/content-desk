@@ -8,7 +8,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ALL_CLUSTERS,
   CLUSTERS,
   type ClusterFilter as ClusterFilterValue,
 } from "@/config/clusters";
@@ -32,7 +31,6 @@ export function ClusterFilter({ value, onChange }: ClusterFilterProps) {
         <SelectValue placeholder="Pilih cluster" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={ALL_CLUSTERS}>Semua cluster</SelectItem>
         {CLUSTERS.map((cluster) => (
           <SelectItem key={cluster} value={cluster}>
             {cluster}

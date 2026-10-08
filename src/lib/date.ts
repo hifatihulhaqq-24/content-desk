@@ -24,7 +24,8 @@ export function today(): Date {
 }
 
 export function defaultDateRange(): DateRange {
-  return { from: addDays(today(), -29), to: today() };
+  // Default periode 7 hari terakhir (catetan Prambanan 8 Okt 2026).
+  return presetDateRange(7);
 }
 
 export function presetDateRange(days: RangePresetDays): DateRange {

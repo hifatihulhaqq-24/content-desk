@@ -18,7 +18,21 @@ export function resolveScopeAccountIds(query: ScopeQuery): string[] {
     ) {
       return [];
     }
+    if (
+      query.platforms &&
+      query.platforms.length > 0 &&
+      !query.platforms.includes(found.platform.id)
+    ) {
+      return [];
+    }
     return [accountId];
+  }
+
+  // Multi-platform (chips): kosong = semua platform.
+  if (query.platforms && query.platforms.length > 0) {
+    return VISIBLE_PLATFORMS.filter((item) =>
+      query.platforms?.includes(item.id)
+    ).flatMap((item) => item.accounts.map((account) => account.id));
   }
 
   const platform = query.platform ?? "all";
@@ -41,5 +55,6 @@ export function scopeKey(query: ScopeQuery): string {
     query.cluster ?? "all",
     query.platform ?? "all",
     query.accountId ?? "all",
+    [...(query.platforms ?? [])].sort().join(","),
   ].join("|");
 }
