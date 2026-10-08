@@ -7,6 +7,10 @@ import {
 } from "@/config/platforms";
 import { PlatformView } from "@/features/platform/platform-view";
 
+// This route validates `params` before rendering (and 404s on unknown
+// platforms), so it is allowed to block on navigation.
+export const instant = false;
+
 export function generateStaticParams() {
   return VISIBLE_PLATFORMS.map((platform) => ({ platform: platform.id }));
 }
