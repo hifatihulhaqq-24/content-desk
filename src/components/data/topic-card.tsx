@@ -114,7 +114,7 @@ export function TopicCard({
           : "border-border hover:border-primary/40"
       )}
     >
-      {/* Thumbnail kiri + overlay gradien supaya cincin skor tetap terbaca */}
+      {/* Thumbnail kiri — foto bersih, tanpa overlay */}
       <div className="relative w-24 self-stretch overflow-hidden sm:w-28 xl:w-32">
         <Image
           src={bucketImageFor(topic.id)}
@@ -122,10 +122,6 @@ export function TopicCard({
           fill
           sizes={IMAGE_SIZES}
           className="object-cover transition-transform duration-300 group-hover:scale-105"
-        />
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-linear-to-t from-card via-card/45 to-transparent"
         />
 
         {/* Cincin skor di pojok thumbnail */}
