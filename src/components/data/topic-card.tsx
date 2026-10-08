@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 /**
  * Aksen tint per kartu — rotasi dari token chart yang sudah ada
  * (content biru, impressions teal, engagements oranye, shade blue tua).
- * Dipakai untuk warna cincin skor; `soft` untuk lapisan lembut di atas foto.
+ * `stroke` untuk cincin skor, `soft`/`accent` untuk chip sumber.
  * Nilai color-mix transparan supaya ikut tema light/dark.
  */
 const CARD_TINTS = [
@@ -40,7 +40,7 @@ const RING_RADIUS = 15.5;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 const IMAGE_SIZES =
-  "(min-width: 1280px) 390px, (min-width: 640px) 46vw, 92vw";
+  "(min-width: 1280px) 128px, (min-width: 640px) 112px, 96px";
 
 interface TopicCardProps {
   topic: TopicIdea;
@@ -88,7 +88,8 @@ function ScoreRing({
 
 /**
  * Kartu rekomendasi topik — dipakai landing /briefs dan Step 1 /create.
- * Strip foto + overlay gradien, cincin skor di pojok, footer tren + aksi.
+ * Layout ramping: thumbnail kiri (membentang seukuran tinggi kartu) +
+ * cincin skor di atasnya, konten & footer tren/aksi di kanan.
  */
 export function TopicCard({
   topic,
@@ -106,15 +107,15 @@ export function TopicCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "group flex w-full flex-col overflow-hidden rounded-xl border bg-card text-left shadow-xs",
+        "group grid w-full grid-cols-[auto_minmax(0,1fr)] overflow-hidden rounded-xl border bg-card text-left shadow-xs",
         "transition duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring",
         selected
           ? "border-primary ring-1 ring-primary"
           : "border-border hover:border-primary/40"
       )}
     >
-      {/* Strip foto + overlay gradien supaya cincin skor tetap terbaca */}
-      <div className="relative aspect-video w-full overflow-hidden">
+      {/* Thumbnail kiri + overlay gradien supaya cincin skor tetap terbaca */}
+      <div className="relative w-24 self-stretch overflow-hidden sm:w-28 xl:w-32">
         <Image
           src={bucketImageFor(topic.id)}
           alt=""
@@ -124,16 +125,16 @@ export function TopicCard({
         />
         <div
           aria-hidden
-          className="absolute inset-0 bg-linear-to-t from-card via-card/40 to-transparent"
+          className="absolute inset-0 bg-linear-to-t from-card via-card/45 to-transparent"
         />
 
-        {/* Cincin skor di atas foto */}
+        {/* Cincin skor di pojok thumbnail */}
         <span
           title={`Skor ${topic.score}`}
-          className="absolute bottom-3 left-3 flex size-11 items-center justify-center rounded-full border border-border bg-card shadow-sm"
+          className="absolute bottom-1.5 left-1.5 flex size-9 items-center justify-center rounded-full border border-border bg-card shadow-sm"
         >
           <ScoreRing score={score} className={tint.stroke} />
-          <span className="absolute text-[11px] font-bold tabular-nums text-foreground">
+          <span className="absolute text-[10px] font-bold tabular-nums text-foreground">
             {topic.score}
           </span>
           <span className="sr-only">Skor {topic.score}</span>
@@ -142,50 +143,53 @@ export function TopicCard({
         {selected && (
           <span
             aria-hidden
-            className="absolute right-3 top-3 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
+            className="absolute right-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
           >
-            <Check className="size-3.5" />
+            <Check className="size-3" />
           </span>
         )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
-          {topic.title}
-        </h3>
-        <p className="line-clamp-2 text-xs text-muted-foreground">
-          {topic.reason}
-        </p>
-        <span
-          className={cn(
-            "mt-auto w-fit rounded-full px-2 py-0.5 text-[11px] font-medium",
-            tint.soft,
-            tint.accent
-          )}
-        >
-          {topic.source}
-        </span>
-      </div>
+      {/* Konten kanan: judul + alasan + chip, lalu footer tren/aksi */}
+      <div className="flex min-w-0 flex-col">
+        <div className="flex flex-1 flex-col gap-1.5 p-3">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
+            {topic.title}
+          </h3>
+          <p className="line-clamp-2 text-xs text-muted-foreground">
+            {topic.reason}
+          </p>
+          <span
+            className={cn(
+              "mt-auto w-fit rounded-full px-2 py-0.5 text-[11px] font-medium",
+              tint.soft,
+              tint.accent
+            )}
+          >
+            {topic.source}
+          </span>
+        </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border px-4 py-3 text-xs">
-        <span className="inline-flex items-center gap-1 font-medium text-positive">
-          <TrendingUp className="size-3.5" aria-hidden />
-          {topic.trendSignal}
-        </span>
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 whitespace-nowrap font-medium transition-colors",
-            selected
-              ? "text-primary"
-              : "text-muted-foreground group-hover:text-primary"
-          )}
-        >
-          {actionLabel}
-          <ArrowRight
-            className="size-3.5 transition-transform group-hover:translate-x-0.5"
-            aria-hidden
-          />
-        </span>
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border px-3 py-2 text-xs">
+          <span className="inline-flex items-center gap-1 font-medium text-positive">
+            <TrendingUp className="size-3.5" aria-hidden />
+            {topic.trendSignal}
+          </span>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 whitespace-nowrap font-medium transition-colors",
+              selected
+                ? "text-primary"
+                : "text-muted-foreground group-hover:text-primary"
+            )}
+          >
+            {actionLabel}
+            <ArrowRight
+              className="size-3.5 transition-transform group-hover:translate-x-0.5"
+              aria-hidden
+            />
+          </span>
+        </div>
       </div>
     </button>
   );
@@ -194,16 +198,18 @@ export function TopicCard({
 /** Skeleton kartu topik — dipakai landing dan Step 1 saat data belum datang. */
 export function TopicCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-      <Skeleton className="aspect-video w-full rounded-none" />
-      <div className="space-y-2 p-4">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-2/3" />
-        <Skeleton className="mt-3 h-5 w-24 rounded-full" />
-      </div>
-      <div className="border-t border-border px-4 py-3">
-        <Skeleton className="h-3 w-full" />
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+      <Skeleton className="w-24 self-stretch rounded-none sm:w-28 xl:w-32" />
+      <div className="flex flex-col">
+        <div className="flex-1 space-y-2 p-3">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-2/3" />
+          <Skeleton className="mt-2 h-5 w-24 rounded-full" />
+        </div>
+        <div className="border-t border-border px-3 py-2">
+          <Skeleton className="h-3 w-full" />
+        </div>
       </div>
     </div>
   );
