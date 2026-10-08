@@ -57,7 +57,7 @@ function GeneratingPanel() {
         {STAGES.map((label, index) => (
           <li key={label} className="flex items-center gap-2 text-sm">
             {index < stage ? (
-              <Check className="size-4 text-emerald-600" aria-hidden />
+              <Check className="size-4 text-positive" aria-hidden />
             ) : index === stage ? (
               <Loader2 className="size-4 animate-spin text-primary" aria-hidden />
             ) : (
@@ -86,7 +86,7 @@ function GeneratingPanel() {
   );
 }
 
-/** Step 3 — generator draf brief (R13/R14) + komentar & regenerate. */
+/** Step 4 — generator draf brief (R13/R14) + komentar & regenerate. */
 export function StepBrief({ flow, brief }: StepBriefProps) {
   const draft = brief.draft;
   const busy = brief.status === "generating";
@@ -108,6 +108,7 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
           topicTitle={flow.topicTitle}
           angleTitle={flow.angle?.title ?? null}
           contentType={flow.contentType}
+          assetSummary={flow.assetSummary}
         />
         {showSkeleton ? (
           <GeneratingPanel />
@@ -121,7 +122,7 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
         ) : (
           <EmptyState
             title="Lengkapi pilihan terlebih dahulu"
-            message="Pilih angle dan tipe konten di step sebelumnya untuk membuat draf brief."
+            message="Pilih angle di step sebelumnya untuk membuat draf brief."
             className="min-h-56"
             action={
               <Button type="button" size="sm" onClick={() => flow.goToStep(2)}>
@@ -135,12 +136,13 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <SelectionSummary
         scenario={flow.scenario}
         topicTitle={flow.topicTitle}
         angleTitle={flow.angle?.title ?? null}
         contentType={flow.contentType}
+        assetSummary={flow.assetSummary}
       />
 
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 shadow-xs">
@@ -151,7 +153,7 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
             </h2>
             <Badge
               variant="secondary"
-              className={cn(busy && "bg-amber-500/10 text-amber-600 dark:text-amber-400")}
+              className={cn(busy && "bg-primary/10 text-primary")}
             >
               {busy ? (
                 <span className="inline-flex items-center gap-1">
@@ -169,6 +171,15 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => flow.goToStep(3)}
+            disabled={busy}
+          >
+            <ArrowLeft className="size-4" aria-hidden /> Ubah aset
+          </Button>
           <Button
             type="button"
             variant="outline"

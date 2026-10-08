@@ -7,7 +7,8 @@ import type { FlowStep } from "./use-create-flow";
 const STEPS: { n: FlowStep; label: string }[] = [
   { n: 1, label: "Insight & Topik" },
   { n: 2, label: "Angle & Format" },
-  { n: 3, label: "Draf Brief" },
+  { n: 3, label: "Kesiapan Aset" },
+  { n: 4, label: "Draf Brief" },
 ];
 
 interface FlowStepperProps {

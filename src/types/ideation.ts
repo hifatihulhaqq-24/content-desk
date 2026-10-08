@@ -24,6 +24,31 @@ export interface AngleOption {
   title: string;
   description: string;
   basis: string;
+  /** Setiap angle mengunci satu format konten spesifik (R10/R11). */
+  contentType: ContentTypeId;
+}
+
+/* ---------- Aset (R8: kesiapan materi) ---------- */
+
+/** Tipe aset yang diupload user. */
+export interface UploadedMediaItem {
+  id: string;
+  name: string;
+  size: number;
+  type: "image" | "video" | "document";
+  previewUrl?: string;
+}
+
+/** Aset internal dari DAM perusahaan. */
+export interface InternalAssetItem {
+  id: string;
+  title: string;
+  type: "image" | "video";
+  thumbnailUrl: string;
+  resolution: string;
+  matchScore: number;
+  tags: string[];
+  sourceDate: string;
 }
 
 /* ---------- Struktur draf per tipe konten ---------- */
@@ -95,6 +120,15 @@ export interface GenerateAnglesInput {
   scenario: EntryScenario;
 }
 
+/** Input pencarian aset internal DAM (R8, skenario "belum punya"). */
+export interface SearchAssetsInput {
+  topic: string;
+  angleId?: string;
+  contentType?: ContentTypeId;
+  query?: string;
+  category?: string;
+}
+
 export interface GenerateBriefInput {
   topic: string;
   scenario: EntryScenario;
@@ -113,4 +147,6 @@ export interface IdeationService {
   listTopicIdeas(): Promise<TopicIdea[]>;
   generateAngles(input: GenerateAnglesInput): Promise<AngleOption[]>;
   generateBrief(input: GenerateBriefInput): Promise<BriefData>;
+  /** Cari aset internal DAM yang relevan dengan topik/angle. */
+  searchInternalAssets(input: SearchAssetsInput): Promise<InternalAssetItem[]>;
 }

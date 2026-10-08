@@ -25,7 +25,7 @@ export interface BriefGenerateOptions {
 }
 
 /**
- * State draf brief untuk seluruh flow: generate otomatis saat masuk Step 3,
+ * State draf brief untuk seluruh flow: generate otomatis saat masuk Step 4,
  * regenerate seluruh/per-bagian dengan komentar (R13/R14), patch edit manual,
  * dan instrumen waktu generate (R31). Dipasang di CreateView agar draf
  * bertahan saat user kembali ke step sebelumnya (R2).
@@ -108,7 +108,7 @@ export function useBrief(enabled: boolean, input: BriefInput) {
     [input.topic, input.scenario, input.angle, input.contentType]
   );
 
-  // Generate otomatis saat input berubah dan user berada di Step 3 (R2/R13).
+  // Generate otomatis saat input berubah dan user berada di Step 4 (R2/R13).
   useEffect(() => {
     if (!enabled || !complete) return;
     if (keyRef.current === key) return;

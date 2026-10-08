@@ -29,6 +29,20 @@ export function formatPercent(value: number, fractionDigits = 1): string {
   })}%`;
 }
 
+/** Ukuran file → label ringkas (mis. 1,2 MB). */
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toLocaleString(ID_LOCALE, { maximumFractionDigits: 1 })} ${units[unit]}`;
+}
+
 /** Durasi detik → m:ss (mis. 2:45). */
 export function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "—";

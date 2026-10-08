@@ -8,6 +8,8 @@ interface SelectionSummaryProps {
   topicTitle: string;
   angleTitle?: string | null;
   contentType?: ContentTypeId | null;
+  /** Ringkasan aset terpilih (Step 3–4). */
+  assetSummary?: string | null;
 }
 
 function Chip({ label, value }: { label: string; value: string | null }) {
@@ -21,12 +23,13 @@ function Chip({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-/** Ringkasan pilihan (R12) — tampil di Step 2 dan Step 3. */
+/** Ringkasan pilihan (R12) — tampil di Step 2 sampai Step 4. */
 export function SelectionSummary({
   scenario,
   topicTitle,
   angleTitle,
   contentType,
+  assetSummary = null,
 }: SelectionSummaryProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3 shadow-xs">
@@ -49,6 +52,7 @@ export function SelectionSummary({
         label="Format"
         value={contentType ? contentTypeLabel(contentType) : null}
       />
+      <Chip label="Aset" value={assetSummary} />
     </div>
   );
 }

@@ -15,6 +15,7 @@ export function getBreadcrumbs(pathname: string): Crumb[] {
     return [{ label: "Overview" }];
   }
   if (pathname.startsWith("/create")) return [{ label: "Create" }];
+  if (pathname.startsWith("/briefs")) return [{ label: "Konten Brief" }];
   if (pathname.startsWith("/settings")) return [{ label: "Pengaturan" }];
   if (pathname.startsWith("/ui-kit")) return [{ label: "UI Kit" }];
 

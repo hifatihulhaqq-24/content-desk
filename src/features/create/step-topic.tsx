@@ -94,11 +94,11 @@ export function StepTopic({ flow }: StepTopicProps) {
                       {topic.title}
                     </h3>
                     {selected ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                         <Check className="size-3" aria-hidden /> Terpilih
                       </span>
                     ) : (
-                      <span className="shrink-0 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-300">
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                         Skor {topic.score}
                       </span>
                     )}
@@ -107,7 +107,7 @@ export function StepTopic({ flow }: StepTopicProps) {
                     {topic.reason}
                   </p>
                   <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                    <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-1 font-medium text-positive">
                       <TrendingUp className="size-3.5" aria-hidden />
                       {topic.trendSignal}
                     </span>
@@ -132,7 +132,7 @@ export function StepTopic({ flow }: StepTopicProps) {
             </p>
           </div>
           {customMatches && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
               <Check className="size-3" aria-hidden /> Terpilih
             </span>
           )}

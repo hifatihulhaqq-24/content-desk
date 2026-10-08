@@ -4,11 +4,14 @@ import type {
   BriefData,
   BriefSectionKey,
   CarouselDraft,
+  ContentTypeId,
   GenerateAnglesInput,
   GenerateBriefInput,
   ImageDraft,
   IdeationService,
+  InternalAssetItem,
   SceneDraft,
+  SearchAssetsInput,
   SlideDraft,
   TopicIdea,
   VideoDraft,
@@ -22,6 +25,7 @@ import {
 } from "@/config/brief-options";
 import { randInt, randRange } from "./random";
 import { topicsForCluster } from "./topics";
+import { MOCK_INTERNAL_ASSETS } from "./internal-assets";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -84,6 +88,8 @@ function toTopicIdea(
 interface AngleTemplate {
   title: string;
   describe: (topic: string) => string;
+  /** Setiap angle mengunci satu format konten (bukan pilih terpisah). */
+  contentType: ContentTypeId;
 }
 
 const ANGLE_TEMPLATES: AngleTemplate[] = [
@@ -91,21 +97,25 @@ const ANGLE_TEMPLATES: AngleTemplate[] = [
     title: "Fakta & angka terkini",
     describe: (topic) =>
       `Rekap data dan angka resmi terbaru seputar ${topic} dalam format ringkas yang mudah dibagikan.`,
+    contentType: "article",
   },
   {
     title: "Sudut pandang warga",
     describe: (topic) =>
       `Cerita personal dan dampak nyata ${topic} dari perspektif orang yang mengalaminya langsung.`,
+    contentType: "video",
   },
   {
     title: "Mitos vs fakta",
     describe: (topic) =>
       `Meluruskan anggapan yang beredar tentang ${topic} dengan membandingkan klaim dan buktinya.`,
+    contentType: "image",
   },
   {
     title: "Langkah praktis",
     describe: (topic) =>
       `Panduan bertahap yang bisa langsung dipraktikkan pembaca terkait ${topic}.`,
+    contentType: "carousel",
   },
 ];
 
@@ -455,6 +465,7 @@ async function generateAngles(input: GenerateAnglesInput): Promise<AngleOption[]
     title: template.title,
     description: template.describe(input.topic),
     basis: angleBasis(input.topic, input.scenario, index),
+    contentType: template.contentType,
   }));
 }
 
@@ -469,8 +480,38 @@ async function generateBrief(input: GenerateBriefInput): Promise<BriefData> {
   return buildBrief(input);
 }
 
+/** Pencarian aset internal DAM (R8 — skenario "belum punya materi"). */
+async function searchInternalAssets(
+  input: SearchAssetsInput
+): Promise<InternalAssetItem[]> {
+  const state = getDemoState();
+  if (state === "loading") return new Promise<never>(() => {});
+  if (state === "error") {
+    await sleep(delayFor("angles"));
+    throw new Error("Gagal mengambil aset internal. Silakan coba lagi.");
+  }
+  await sleep(delayFor("angles"));
+  if (state === "empty") return [];
+
+  const query = input.query?.trim().toLowerCase() ?? "";
+  const category = input.category?.trim().toLowerCase() ?? "";
+  return MOCK_INTERNAL_ASSETS.filter((asset) => {
+    const matchesCategory =
+      !category || asset.tags.some((tag) => tag.toLowerCase() === category);
+    if (!matchesCategory) return false;
+    if (!query) return true;
+    return (
+      asset.title.toLowerCase().includes(query) ||
+      asset.tags.some((tag) => tag.toLowerCase().includes(query))
+    );
+  })
+    .slice()
+    .sort((a, b) => b.matchScore - a.matchScore);
+}
+
 export const mockIdeationService: IdeationService = {
   listTopicIdeas,
   generateAngles,
   generateBrief,
+  searchInternalAssets,
 };

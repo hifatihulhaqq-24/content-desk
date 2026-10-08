@@ -13,12 +13,12 @@ import {
   Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/data/states";
-import { CONTENT_TYPES, CONTENT_TYPE_MAP } from "@/config/content-types";
+import { CONTENT_TYPE_MAP } from "@/config/content-types";
 import { getIdeationService } from "@/services/ideation-service";
 import { cn } from "@/lib/utils";
-import type { ContentTypeId } from "@/types/ideation";
 import { SelectionSummary } from "./selection-summary";
 import type { CreateFlow } from "./use-create-flow";
 
@@ -27,13 +27,13 @@ const ICONS = {
   Video,
   Image: ImageIcon,
   GalleryHorizontal,
-};
+} as const;
 
 interface StepAngleProps {
   flow: CreateFlow;
 }
 
-/** Step 2 — pilih 1 angle (R9) dan 1 tipe konten (R10/R11). */
+/** Step 2 — pilih 1 angle (R9); setiap angle mengunci 1 format konten (R10/R11). */
 export function StepAngle({ flow }: StepAngleProps) {
   const topicTitle = flow.topicTitle;
   const scenario = flow.scenario ?? "recommended";
@@ -62,8 +62,8 @@ export function StepAngle({ flow }: StepAngleProps) {
             <h2 className="text-base font-semibold">Pilih angle</h2>
             <p className="text-xs text-muted-foreground">
               {scenario === "recommended"
-                ? "Angle disusun dari performa historis konten serupa."
-                : "Angle disusun AI dari topik Anda dan sinyal tren terkini."}
+                ? "Angle disusun dari performa historis konten serupa — setiap angle mengunci satu format konten."
+                : "Angle disusun AI dari topik Anda dan sinyal tren terkini — setiap angle mengunci satu format konten."}
             </p>
           </div>
           {query.isSuccess && angles.length > 0 && (
@@ -109,6 +109,8 @@ export function StepAngle({ flow }: StepAngleProps) {
           <div className="grid gap-3 sm:grid-cols-2">
             {angles.map((option) => {
               const selected = flow.angle?.id === option.id;
+              const typeInfo = CONTENT_TYPE_MAP[option.contentType];
+              const TypeIcon = ICONS[typeInfo.icon];
               return (
                 <button
                   key={option.id}
@@ -125,7 +127,7 @@ export function StepAngle({ flow }: StepAngleProps) {
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="text-sm font-semibold">{option.title}</h3>
                     {selected && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                         <Check className="size-3" aria-hidden /> Terpilih
                       </span>
                     )}
@@ -140,64 +142,15 @@ export function StepAngle({ flow }: StepAngleProps) {
                     />
                     {option.basis}
                   </p>
+                  <Badge variant="secondary" className="mt-3 self-start text-xs">
+                    <TypeIcon className="size-3.5" aria-hidden />
+                    {typeInfo.label}
+                  </Badge>
                 </button>
               );
             })}
           </div>
         )}
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-base font-semibold">Tipe konten</h2>
-          <p className="text-xs text-muted-foreground">
-            Pilih satu tipe konten yang akan dibuat drafnya.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {CONTENT_TYPES.map((type) => {
-            const Icon = ICONS[type.icon];
-            const selected = flow.contentType === type.id;
-            return (
-              <button
-                key={type.id}
-                type="button"
-                onClick={() =>
-                  flow.requestSelection({ contentType: type.id as ContentTypeId })
-                }
-                aria-pressed={selected}
-                className={cn(
-                  "flex flex-col rounded-xl border bg-card p-4 text-left shadow-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring",
-                  selected
-                    ? "border-primary ring-1 ring-primary"
-                    : "border-border hover:border-primary/40 hover:bg-muted/40"
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={cn(
-                      "flex size-9 items-center justify-center rounded-lg",
-                      selected
-                        ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    <Icon className="size-4.5" aria-hidden />
-                  </span>
-                  {selected && (
-                    <Check className="size-4 text-primary" aria-hidden />
-                  )}
-                </div>
-                <h3 className="mt-3 text-sm font-semibold">
-                  {CONTENT_TYPE_MAP[type.id].label}
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {type.description}
-                </p>
-              </button>
-            );
-          })}
-        </div>
       </section>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -208,7 +161,7 @@ export function StepAngle({ flow }: StepAngleProps) {
         <div className="flex items-center gap-3">
           {flow.canAdvance ? null : (
             <span className="text-xs text-muted-foreground">
-              Pilih satu angle dan satu tipe konten untuk melanjutkan.
+              Pilih satu angle untuk melanjutkan.
             </span>
           )}
           <Button
@@ -216,7 +169,7 @@ export function StepAngle({ flow }: StepAngleProps) {
             disabled={!flow.canAdvance}
             onClick={flow.advance}
           >
-            Lanjut ke Draf Brief
+            Lanjut ke Kesiapan Aset
             <ArrowRight className="ml-1 size-4" aria-hidden />
           </Button>
         </div>

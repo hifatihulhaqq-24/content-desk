@@ -4,11 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChevronsUpDown,
+  FileText,
+  Image as ImageIcon,
   LayoutDashboard,
   LogOut,
-  Plus,
   Settings,
   User,
+  Video,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -57,7 +59,7 @@ export function AppSidebar() {
           onClick={closeMobile}
           className="flex items-center gap-2 px-2 py-1.5 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-[11px] font-bold text-sidebar-primary-foreground group-data-[collapsible=icon]:size-7">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground group-data-[collapsible=icon]:size-7">
             CD
           </span>
           <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
@@ -91,19 +93,6 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  tooltip="Buat Konten"
-                  isActive={pathname.startsWith("/create")}
-                >
-                  <Link href="/create" onClick={closeMobile}>
-                    <Plus />
-                    <span>Buat Konten</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
                   tooltip="Pengaturan"
                   isActive={pathname.startsWith("/settings")}
                 >
@@ -111,6 +100,40 @@ export function AppSidebar() {
                     <Settings />
                     <span>Pengaturan</span>
                   </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip="Konten Brief"
+                  isActive={pathname.startsWith("/briefs")}
+                >
+                  <Link href="/briefs" onClick={closeMobile}>
+                    <FileText />
+                    <span>Konten Brief</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Buat Gambar" disabled>
+                  <ImageIcon />
+                  <span>Buat Gambar (TBD)</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Buat Video" disabled>
+                  <Video />
+                  <span>Buat Video (TBD)</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -135,7 +158,7 @@ export function AppSidebar() {
                 <span className="truncate text-xs font-medium">
                   {CURRENT_USER.name}
                 </span>
-                <span className="truncate text-[11px] text-muted-foreground">
+                <span className="truncate text-xs text-muted-foreground">
                   {CURRENT_USER.role}
                 </span>
               </span>
