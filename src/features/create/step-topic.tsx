@@ -6,9 +6,8 @@ import { ArrowRight, Check, PenLine, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/data/states";
-import { TopicCard } from "@/components/data/topic-card";
+import { TopicCard, TopicCardSkeleton } from "@/components/data/topic-card";
 import { getIdeationService } from "@/services/ideation-service";
 import { cn } from "@/lib/utils";
 import type { CreateFlow } from "./use-create-flow";
@@ -140,21 +139,7 @@ export function StepTopic({ flow }: StepTopicProps) {
         {query.isPending ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }, (_, index) => (
-              <div
-                key={index}
-                className="rounded-xl border border-border bg-card p-4 shadow-xs"
-              >
-                <div className="flex gap-3">
-                  <Skeleton className="size-9 shrink-0 rounded-lg" />
-                  <div className="min-w-0 flex-1">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="mt-2 h-1.5 w-full rounded-full" />
-                  </div>
-                </div>
-                <Skeleton className="mt-3 h-3 w-full" />
-                <Skeleton className="mt-2 h-3 w-2/3" />
-                <Skeleton className="mt-4 h-5 w-24" />
-              </div>
+              <TopicCardSkeleton key={index} />
             ))}
           </div>
         ) : query.isError ? (

@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState, ErrorState } from "@/components/data/states";
-import { TopicCard } from "@/components/data/topic-card";
+import { TopicCard, TopicCardSkeleton } from "@/components/data/topic-card";
 import { getIdeationService } from "@/services/ideation-service";
 import { getBriefProjectService } from "@/services/brief-project-service";
 import { contentTypeLabel } from "@/config/content-types";
@@ -27,7 +27,6 @@ import type {
   BriefProject,
   BriefProjectStatus,
 } from "@/types/brief-project";
-import { BriefComposer } from "./brief-composer";
 import { BriefHero } from "./brief-hero";
 
 const STATUS_LABEL: Record<BriefProjectStatus, string> = {
@@ -54,7 +53,7 @@ const FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "published", label: "Terbit" },
 ];
 
-/** Dashboard Workspace "Konten Brief" — hero, rail cepat, dan daftar proyek. */
+/** Dashboard Workspace "Konten Brief" — hero, rekomendasi topik, daftar proyek. */
 export function BriefDashboard() {
   const router = useRouter();
   const topicsRef = useRef<HTMLElement>(null);
@@ -81,9 +80,6 @@ export function BriefDashboard() {
       .length,
   };
 
-  const draftProject =
-    projects.find((project) => project.status === "draft") ?? null;
-
   const visibleProjects =
     statusFilter === "all"
       ? projects
@@ -104,7 +100,7 @@ export function BriefDashboard() {
     <PageContainer>
       <PageHeader
         title="Konten Brief"
-        description="Daftar proyek konten dan shortcut rekomendasi topik untuk memulai brief baru."
+        description="Rekomendasi topik harian dan daftar proyek konten tim — mulai brief baru langsung dari topik yang dipilih."
       />
 
       <BriefHero
@@ -113,181 +109,162 @@ export function BriefDashboard() {
         onSeeTopics={scrollToTopics}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <BriefComposer
-          stats={stats}
-          draftProject={draftProject}
-          onCreateWith={(title) => goToCreate({ title })}
-          onStartBlank={() => goToCreate()}
-          onSeeTopics={scrollToTopics}
-        />
-
-        <div className="min-w-0 space-y-6">
-          <section ref={topicsRef} className="scroll-mt-20 space-y-3">
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div>
-                <h2 className="text-base font-semibold">Rekomendasi topik</h2>
-                <p className="text-xs text-muted-foreground">
-                  Klik salah satu untuk langsung memulai brief dengan topik
-                  tersebut.
-                </p>
-              </div>
-              {topicsQuery.isFetching && !topicsQuery.isPending && (
-                <span className="text-xs text-muted-foreground">
-                  Memperbarui…
-                </span>
-              )}
+      {/* grid + min-w-0 di tiap section: mencegah min-content tabel proyek
+          mendorong halaman melebar (main jadi flex item min-width:auto). */}
+      <div className="grid gap-6">
+        <section
+          ref={topicsRef}
+          className="min-w-0 scroll-mt-20 space-y-3"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 className="text-base font-semibold">Rekomendasi topik</h2>
+              <p className="text-xs text-muted-foreground">
+                Klik salah satu untuk langsung memulai brief dengan topik
+                tersebut.
+              </p>
             </div>
-
-            {topicsQuery.isPending ? (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {Array.from({ length: 6 }, (_, index) => (
-                  <div
-                    key={index}
-                    className="rounded-xl border border-border bg-card p-4 shadow-xs"
-                  >
-                    <div className="flex gap-3">
-                      <Skeleton className="size-9 shrink-0 rounded-lg" />
-                      <div className="min-w-0 flex-1">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="mt-2 h-1.5 w-full rounded-full" />
-                      </div>
-                    </div>
-                    <Skeleton className="mt-3 h-3 w-full" />
-                    <Skeleton className="mt-2 h-3 w-2/3" />
-                    <Skeleton className="mt-4 h-5 w-24" />
-                  </div>
-                ))}
-              </div>
-            ) : topicsQuery.isError ? (
-              <ErrorState
-                onRetry={() => void topicsQuery.refetch()}
-                className="min-h-40"
-              />
-            ) : topics.length === 0 ? (
-              <EmptyState
-                title="Belum ada rekomendasi"
-                message="Belum ada topik yang bisa direkomendasikan. Kamu tetap bisa membuat brief dari nol."
-                className="min-h-40"
-              />
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {topics.map((topic, index) => (
-                  <TopicCard
-                    key={topic.id}
-                    topic={topic}
-                    index={index}
-                    onSelect={() => goToCreate({ topic: topic.id })}
-                  />
-                ))}
-              </div>
+            {topicsQuery.isFetching && !topicsQuery.isPending && (
+              <span className="text-xs text-muted-foreground">
+                Memperbarui…
+              </span>
             )}
-          </section>
+          </div>
 
-          <section className="space-y-3">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold">Daftar proyek</h2>
-                <p className="text-xs text-muted-foreground">
-                  Brief yang sudah dikerjakan beserta angle, format, dan
-                  statusnya.
-                </p>
-              </div>
+          {topicsQuery.isPending ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }, (_, index) => (
+                <TopicCardSkeleton key={index} />
+              ))}
+            </div>
+          ) : topicsQuery.isError ? (
+            <ErrorState
+              onRetry={() => void topicsQuery.refetch()}
+              className="min-h-40"
+            />
+          ) : topics.length === 0 ? (
+            <EmptyState
+              title="Belum ada rekomendasi"
+              message="Belum ada topik yang bisa direkomendasikan. Kamu tetap bisa membuat brief dari nol."
+              className="min-h-40"
+            />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {topics.map((topic, index) => (
+                <TopicCard
+                  key={topic.id}
+                  topic={topic}
+                  index={index}
+                  onSelect={() => goToCreate({ topic: topic.id })}
+                />
+              ))}
+            </div>
+          )}
+        </section>
 
-              <div
-                role="group"
-                aria-label="Filter status proyek"
-                className="flex flex-wrap items-center gap-1.5"
-              >
-                {FILTERS.map((filter) => {
-                  const active = statusFilter === filter.value;
-                  return (
-                    <button
-                      key={filter.value}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setStatusFilter(filter.value)}
-                      className={cn(
-                        "rounded-full border px-2.5 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring",
-                        active
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card text-muted-foreground hover:bg-muted/60"
-                      )}
-                    >
-                      {filter.label}
-                    </button>
-                  );
-                })}
-              </div>
+        <section className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold">Daftar proyek</h2>
+              <p className="text-xs text-muted-foreground">
+                Brief yang sudah dikerjakan beserta angle, format, dan
+                statusnya.
+              </p>
             </div>
 
-            {projectsQuery.isPending ? (
-              <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
-                <div className="space-y-3">
-                  {Array.from({ length: 5 }, (_, index) => (
-                    <Skeleton key={index} className="h-9 w-full" />
+            <div
+              role="group"
+              aria-label="Filter status proyek"
+              className="flex flex-wrap items-center gap-1.5"
+            >
+              {FILTERS.map((filter) => {
+                const active = statusFilter === filter.value;
+                return (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setStatusFilter(filter.value)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+                      active
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted/60"
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {projectsQuery.isPending ? (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
+              <div className="space-y-3">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <Skeleton key={index} className="h-9 w-full" />
+                ))}
+              </div>
+            </div>
+          ) : projectsQuery.isError ? (
+            <ErrorState
+              onRetry={() => void projectsQuery.refetch()}
+              className="min-h-40"
+            />
+          ) : projects.length === 0 ? (
+            <EmptyState
+              title="Belum ada proyek"
+              message="Belum ada brief yang dibuat. Mulai dari rekomendasi topik di atas atau buat dari nol."
+              className="min-h-40"
+              action={
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => goToCreate()}
+                >
+                  Buat dari nol
+                </Button>
+              }
+            />
+          ) : visibleProjects.length === 0 ? (
+            <EmptyState
+              title={`Tidak ada proyek berstatus ${STATUS_LABEL[statusFilter as BriefProjectStatus]}`}
+              message="Pilih filter lain untuk melihat proyek lainnya."
+              className="min-h-40"
+              action={
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setStatusFilter("all")}
+                >
+                  Tampilkan semua
+                </Button>
+              }
+            />
+          ) : (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Topik</TableHead>
+                    <TableHead>Angle</TableHead>
+                    <TableHead>Format</TableHead>
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleProjects.map((project) => (
+                    <ProjectRow key={project.id} project={project} />
                   ))}
-                </div>
-              </div>
-            ) : projectsQuery.isError ? (
-              <ErrorState
-                onRetry={() => void projectsQuery.refetch()}
-                className="min-h-40"
-              />
-            ) : projects.length === 0 ? (
-              <EmptyState
-                title="Belum ada proyek"
-                message="Belum ada brief yang dibuat. Mulai dari rekomendasi topik di atas atau buat dari nol."
-                className="min-h-40"
-                action={
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => goToCreate()}
-                  >
-                    Buat dari nol
-                  </Button>
-                }
-              />
-            ) : visibleProjects.length === 0 ? (
-              <EmptyState
-                title={`Tidak ada proyek berstatus ${STATUS_LABEL[statusFilter as BriefProjectStatus]}`}
-                message="Pilih filter lain untuk melihat proyek lainnya."
-                className="min-h-40"
-                action={
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setStatusFilter("all")}
-                  >
-                    Tampilkan semua
-                  </Button>
-                }
-              />
-            ) : (
-              <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Topik</TableHead>
-                      <TableHead>Angle</TableHead>
-                      <TableHead>Format</TableHead>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {visibleProjects.map((project) => (
-                      <ProjectRow key={project.id} project={project} />
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </section>
-        </div>
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </section>
       </div>
     </PageContainer>
   );

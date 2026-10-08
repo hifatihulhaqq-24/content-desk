@@ -10,35 +10,13 @@ import type { QueryUiState } from "@/hooks/use-analytics";
 import { cn } from "@/lib/utils";
 import { formatCompact, formatNumber } from "@/lib/format";
 import { EXTERNAL_LINK_PROPS, postUrl } from "@/lib/content-links";
+import { bucketImageFor } from "@/lib/mock-bucket-images";
 import type { ContentBucket, ContentBucketKey } from "@/types/analytics";
 
 const BUCKET_ICONS: Record<ContentBucketKey, ReactNode> = {
   highlight: <ArrowUpRight className="size-4" aria-hidden />,
   lowLight: <TrendingDown className="size-4" aria-hidden />,
 };
-
-const BUCKET_IMAGES = [
-  "/mock/bucket-01.jpg",
-  "/mock/bucket-02.jpg",
-  "/mock/bucket-03.jpg",
-  "/mock/bucket-04.jpg",
-  "/mock/bucket-05.jpg",
-  "/mock/bucket-06.jpg",
-  "/mock/bucket-07.jpg",
-  "/mock/bucket-08.jpg",
-  "/mock/bucket-09.jpg",
-  "/mock/bucket-10.jpg",
-  "/mock/bucket-11.jpg",
-  "/mock/bucket-12.jpg",
-];
-
-function imageForPost(postId: string): string {
-  let hash = 0;
-  for (let i = 0; i < postId.length; i++) {
-    hash = (hash * 31 + postId.charCodeAt(i)) >>> 0;
-  }
-  return BUCKET_IMAGES[hash % BUCKET_IMAGES.length];
-}
 
 interface ContentBucketsSectionProps {
   status: QueryUiState;
@@ -151,7 +129,7 @@ export function ContentBucketsSection({
                     >
                       <div className="relative size-16 shrink-0 overflow-hidden rounded-md">
                         <Image
-                          src={imageForPost(post.id)}
+                          src={bucketImageFor(post.id)}
                           alt=""
                           fill
                           sizes="64px"
