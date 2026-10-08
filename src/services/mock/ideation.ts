@@ -14,6 +14,12 @@ import type {
   VideoDraft,
 } from "@/types/ideation";
 import { getDemoState } from "../demo-state";
+import {
+  AVATAR_OPTIONS,
+  CAROUSEL_ASPECT_OPTIONS,
+  IMAGE_ASPECT_OPTIONS,
+  VIDEO_ASPECT_OPTIONS,
+} from "@/config/brief-options";
 import { randInt, randRange } from "./random";
 import { topicsForCluster } from "./topics";
 
@@ -151,10 +157,10 @@ const ARTICLE_BODY_VARIANTS = [
     `<p>Daftar langkah konkret yang bisa langsung dipraktikkan pembaca, ditutup dengan ajakan berdiskusi di kolom komentar.</p>`,
 ];
 
-const VIDEO_ASPECTS = ["9:16", "1:1", "16:9"];
-const AVATARS = ["Avatar Raka – Presenter", "Avatar Nisa – Santai", "Tanpa avatar"];
-const IMAGE_ASPECTS = ["1:1", "4:5", "16:9"];
-const CAROUSEL_ASPECTS = ["4:5", "1:1"];
+const VIDEO_ASPECTS = VIDEO_ASPECT_OPTIONS;
+const AVATARS = AVATAR_OPTIONS;
+const IMAGE_ASPECTS = IMAGE_ASPECT_OPTIONS;
+const CAROUSEL_ASPECTS = CAROUSEL_ASPECT_OPTIONS;
 
 const VIDEO_SUMMARIES = [
   (topic: string, angle: string) =>

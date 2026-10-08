@@ -91,12 +91,12 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  tooltip="Create"
+                  tooltip="Buat Konten"
                   isActive={pathname.startsWith("/create")}
                 >
                   <Link href="/create" onClick={closeMobile}>
                     <Plus />
-                    <span>Create</span>
+                    <span>Buat Konten</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

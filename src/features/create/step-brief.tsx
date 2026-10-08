@@ -19,6 +19,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { BriefController } from "@/hooks/use-brief";
 import { ArticlePanel } from "./brief/article-panel";
+import { CarouselPanel } from "./brief/carousel-panel";
+import { ImagePanel } from "./brief/image-panel";
+import { VideoPanel } from "./brief/video-panel";
 import { SelectionSummary } from "./selection-summary";
 import type { CreateFlow } from "./use-create-flow";
 
@@ -224,18 +227,36 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
         </div>
       </section>
 
-      {draft.contentType === "article" ? (
+      {draft.contentType === "article" && (
         <ArticlePanel
           data={draft.data}
           busy={busy}
           onPatch={brief.patch}
           onRegenerate={brief.regenerateSection}
         />
-      ) : (
-        <EmptyState
-          title={`Panel ${contentTypeLabel(draft.contentType)} belum dipasang`}
-          message="Panel aset tipe ini dipasang pada milestone berikutnya."
-          className="min-h-40"
+      )}
+      {draft.contentType === "video" && (
+        <VideoPanel
+          data={draft.data}
+          busy={busy}
+          onPatch={brief.patch}
+          onRegenerate={brief.regenerateSection}
+        />
+      )}
+      {draft.contentType === "image" && (
+        <ImagePanel
+          data={draft.data}
+          busy={busy}
+          onPatch={brief.patch}
+          onRegenerate={brief.regenerateSection}
+        />
+      )}
+      {draft.contentType === "carousel" && (
+        <CarouselPanel
+          data={draft.data}
+          busy={busy}
+          onPatch={brief.patch}
+          onRegenerate={brief.regenerateSection}
         />
       )}
 
