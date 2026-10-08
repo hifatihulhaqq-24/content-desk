@@ -19,6 +19,8 @@ interface StatCardProps {
   sparkline?: number[] | null;
   /** Deret pembanding (periode sebelumnya) — garis putus-putus abu. */
   previousSparkline?: number[] | null;
+  /** Label per titik sparkline (mis. "3 Okt") untuk tooltip hover. */
+  sparklineLabels?: string[] | null;
   /** Label sumbu X di bawah sparkline (mis. hari: "Rab", "Kam", …). */
   axisLabels?: string[] | null;
   /** Keterangan kecil di bawah nilai. */
@@ -35,6 +37,7 @@ export function StatCard({
   deltaUnit = "%",
   sparkline = null,
   previousSparkline = null,
+  sparklineLabels = null,
   axisLabels = null,
   hint,
   loading = false,
@@ -78,6 +81,7 @@ export function StatCard({
           <Sparkline
             values={sparkline}
             previousValues={previousSparkline}
+            labels={sparklineLabels}
             className="mt-3"
           />
           {axisLabels && axisLabels.length > 0 && (

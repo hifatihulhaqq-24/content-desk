@@ -1,7 +1,9 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { DeltaBadge } from "@/components/data/delta-badge";
+import { HoverTooltip } from "@/components/data/hover-tooltip";
 import { EmptyState, ErrorState } from "@/components/data/states";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +18,81 @@ interface PlatformSummarySectionProps {
   tagging: string;
   onTaggingChange: (tagging: string) => void;
   onRetry: () => void;
+}
+
+interface ShareBarProps {
+  color: string;
+  impressionsSharePercent: number;
+  postsSharePercent: number;
+}
+
+/**
+ * Bar kontribusi impression pada kartu Data Platform — hover menampilkan
+ * tooltip kontribusi + sorotan bar, selaras interaksi chart lain di Overview.
+ */
+function ShareBar({
+  color,
+  impressionsSharePercent,
+  postsSharePercent,
+}: ShareBarProps) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
+
+  return (
+    <div
+      ref={boxRef}
+      className="group relative flex flex-col gap-1 rounded-lg bg-muted/50 p-2.5 transition-colors hover:bg-muted"
+      onMouseMove={(event) => {
+        const box = boxRef.current;
+        if (!box) return;
+        const rect = box.getBoundingClientRect();
+        setHover({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+      }}
+      onMouseLeave={() => setHover(null)}
+    >
+      <p className="text-xs text-muted-foreground">
+        Kontribusi Impression{" "}
+        <b className="font-semibold text-foreground tabular-nums">
+          {formatPercent(impressionsSharePercent)}
+        </b>{" "}
+        · konten{" "}
+        <b className="font-semibold text-foreground tabular-nums">
+          {formatPercent(postsSharePercent)}
+        </b>
+      </p>
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-muted"
+        role="img"
+        aria-label={`Kontribusi impression ${formatPercent(impressionsSharePercent)}`}
+      >
+        <div
+          className="h-full rounded-full transition-[filter] duration-150 group-hover:brightness-125"
+          style={{
+            width: `${Math.max(0, Math.min(100, impressionsSharePercent))}%`,
+            background: color,
+          }}
+        />
+      </div>
+      {hover && (
+        <HoverTooltip
+          x={hover.x}
+          y={hover.y}
+          label="Kontribusi"
+          rows={[
+            {
+              label: "Impression",
+              color,
+              value: formatPercent(impressionsSharePercent),
+            },
+            {
+              label: "Konten",
+              value: formatPercent(postsSharePercent),
+            },
+          ]}
+        />
+      )}
+    </div>
+  );
 }
 
 export function PlatformSummarySection({
@@ -112,31 +189,11 @@ export function PlatformSummarySection({
               <DeltaBadge value={summary.impressionsGrowthPercent} />
             </div>
 
-            <div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-2.5">
-              <p className="text-xs text-muted-foreground">
-                Kontribusi Impression{" "}
-                <b className="font-semibold text-foreground tabular-nums">
-                  {formatPercent(summary.impressionsSharePercent)}
-                </b>{" "}
-                · konten{" "}
-                <b className="font-semibold text-foreground tabular-nums">
-                  {formatPercent(summary.postsSharePercent)}
-                </b>
-              </p>
-              <div
-                className="h-1.5 overflow-hidden rounded-full bg-muted"
-                role="img"
-                aria-label={`Kontribusi impression ${formatPercent(summary.impressionsSharePercent)}`}
-              >
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${Math.max(0, Math.min(100, summary.impressionsSharePercent))}%`,
-                    background: summary.color,
-                  }}
-                />
-              </div>
-            </div>
+            <ShareBar
+              color={summary.color}
+              impressionsSharePercent={summary.impressionsSharePercent}
+              postsSharePercent={summary.postsSharePercent}
+            />
 
             <dl className="flex flex-col gap-2 border-t pt-2 text-xs">
               <div className="flex items-center justify-between gap-2">

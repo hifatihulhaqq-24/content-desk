@@ -5,6 +5,7 @@ import { ErrorState } from "@/components/data/states";
 import type { QueryUiState } from "@/hooks/use-analytics";
 import type { KpiMetric, TrendPoint } from "@/types/analytics";
 import { sparklineFromTrend } from "./overview-helpers";
+import { formatDateShort } from "@/lib/format";
 
 /** Singkatan hari (Bahasa Indonesia) untuk label sumbu sparkline KPI. */
 const WEEKDAY_LABELS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
@@ -43,6 +44,7 @@ export function KpiSection({
 
   const axisLabels =
     trendPoints.length > 1 ? trendPoints.map((point) => weekdayLabel(point.date)) : null;
+  const pointLabels = trendPoints.map((point) => formatDateShort(point.date));
 
   if (status === "loading") {
     return (
@@ -67,6 +69,7 @@ export function KpiSection({
             deltaUnit="%"
             sparkline={sparklineFromTrend(trendPoints, kpi.key)}
             previousSparkline={sparklineFromTrend(previousPoints, kpi.key)}
+            sparklineLabels={pointLabels}
             axisLabels={axisLabels}
           />
         ))}

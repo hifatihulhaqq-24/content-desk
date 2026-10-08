@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import {
   ChartContainer,
@@ -41,6 +42,8 @@ export function DonutChart({
   const total = centerValue ?? segments.reduce((sum, d) => sum + d.value, 0);
   const { ref, inView, prefersReducedMotion } = useInView<HTMLDivElement>();
   const animated = inView && !prefersReducedMotion;
+  /** Segmen aktif — dipilih dari hover segmen maupun hover baris legend. */
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const config: ChartConfig = {};
   for (const segment of segments) {
@@ -87,11 +90,17 @@ export function DonutChart({
               isAnimationActive={animated}
               animationDuration={700}
               animationEasing="ease-out"
+              onMouseEnter={(_, index) => setActiveIndex(index)}
+              onMouseLeave={() => setActiveIndex(null)}
             >
-              {segments.map((segment) => (
+              {segments.map((segment, index) => (
                 <Cell
                   key={segment.label}
                   fill={segment.color ?? "var(--color-chart-1)"}
+                  fillOpacity={
+                    activeIndex === null || activeIndex === index ? 1 : 0.35
+                  }
+                  className="transition-[fill-opacity] duration-150"
                 />
               ))}
             </Pie>
@@ -114,7 +123,14 @@ export function DonutChart({
           {segments.map((segment, index) => (
             <li
               key={segment.label}
-              className="flex items-center justify-between gap-3 text-xs"
+              onMouseEnter={() => setActiveIndex(index)}
+              onMouseLeave={() => setActiveIndex(null)}
+              className={cn(
+                "-mx-1 flex cursor-default items-center justify-between gap-3 rounded-md px-1 py-0.5 text-xs transition-[opacity,background-color] duration-150 hover:bg-muted/50",
+                activeIndex !== null &&
+                  activeIndex !== index &&
+                  "opacity-55"
+              )}
             >
               <span className="flex min-w-0 items-center gap-2">
                 <span

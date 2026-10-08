@@ -1,9 +1,11 @@
 "use client";
 
+import { useRef, useState, type MouseEvent } from "react";
 import { EmptyState, ErrorState } from "@/components/data/states";
+import { HoverTooltip } from "@/components/data/hover-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { QueryUiState } from "@/hooks/use-analytics";
-import { formatCompact } from "@/lib/format";
+import { formatCompact, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { MedianInsight, MedianRow } from "@/types/analytics";
 
@@ -45,9 +47,33 @@ function MedianSkeleton() {
   );
 }
 
+/** Posisi pointer + baris median yang sedang di-hover pada kartu. */
+interface MedianBarHover {
+  x: number;
+  y: number;
+  row: MedianRow;
+}
+
 function MedianCard({ insight }: { insight: MedianInsight }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<MedianBarHover | null>(null);
+
+  const trackBar = (event: MouseEvent<HTMLTableRowElement>, row: MedianRow) => {
+    const card = cardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    setHover({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+      row,
+    });
+  };
+
   return (
-    <div className="rounded-xl bg-card p-4 text-card-foreground shadow-xs">
+    <div
+      ref={cardRef}
+      className="relative rounded-xl bg-card p-4 text-card-foreground shadow-xs"
+    >
       <h3 className="text-[15px] font-bold">{insight.label}</h3>
 
       <div className="mt-2 overflow-x-auto">
@@ -70,7 +96,12 @@ function MedianCard({ insight }: { insight: MedianInsight }) {
           </thead>
           <tbody>
             {insight.rows.map((row) => (
-              <MedianRowCells key={row.platform} row={row} />
+              <MedianRowCells
+                key={row.platform}
+                row={row}
+                onBarMove={trackBar}
+                onBarLeave={() => setHover(null)}
+              />
             ))}
           </tbody>
         </table>
@@ -102,17 +133,53 @@ function MedianCard({ insight }: { insight: MedianInsight }) {
           Di atas standar (&gt; +30%)
         </span>
       </div>
+
+      {hover && (
+        <HoverTooltip
+          x={hover.x}
+          y={hover.y}
+          label={`${hover.row.name} · ${formatCompact(hover.row.value)}`}
+          rows={[
+            {
+              label: "Di bawah standar",
+              color: BAR_BELOW,
+              value: formatNumber(hover.row.counts.below),
+            },
+            {
+              label: "Sekitar standar",
+              color: BAR_AROUND,
+              value: formatNumber(hover.row.counts.around),
+            },
+            {
+              label: "Di atas standar",
+              color: BAR_ABOVE,
+              value: formatNumber(hover.row.counts.above),
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }
 
-function MedianRowCells({ row }: { row: MedianRow }) {
+interface MedianRowCellsProps {
+  row: MedianRow;
+  /** Hover pada pita distribusi → tampilkan tooltip rincian. */
+  onBarMove?: (event: MouseEvent<HTMLTableRowElement>, row: MedianRow) => void;
+  onBarLeave?: () => void;
+}
+
+function MedianRowCells({ row, onBarMove, onBarLeave }: MedianRowCellsProps) {
   const total = row.counts.below + row.counts.around + row.counts.above;
   const pct = (count: number) => (total > 0 ? (count / total) * 100 : 0);
   const delta = ratioDelta(row.ratio);
 
   return (
-    <tr>
+    <tr
+      className="transition-colors hover:bg-muted/50"
+      onMouseMove={(event) => onBarMove?.(event, row)}
+      onMouseLeave={onBarLeave}
+    >
       <th
         scope="row"
         className="whitespace-nowrap border-b px-2.5 py-2.5 text-left font-semibold"

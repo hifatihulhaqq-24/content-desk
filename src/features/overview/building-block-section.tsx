@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChartCard } from "@/components/data/chart-card";
+import { HoverTooltip } from "@/components/data/hover-tooltip";
 import { PlatformChips } from "./platform-chips";
 import { getQueryUiState, useBuildingBlock } from "@/hooks/use-analytics";
 import { formatCompact, formatNumber } from "@/lib/format";
@@ -48,13 +49,29 @@ const COLUMNS: MetricColumn[] = [
   },
 ];
 
+/** Posisi pointer + info baris Building Block yang sedang di-hover. */
+interface BlockHover {
+  x: number;
+  y: number;
+  /** Nama elemen penyusun konten. */
+  label: string;
+  columnTitle: string;
+  color: string;
+  display: string;
+  /** Nilai vs bar tertinggi (%). */
+  percent: number;
+}
+
 /**
  * Building Block Analysis — satu card, dibagi 3 part: Total konten,
  * Impression, dan Engagement. Tiap part daftar 10 elemen dengan bar inline
  * (rank + nama + nilai + bar), diurutkan desc sesuai metrik part tsb.
+ * Hover baris menampilkan tooltip nilai + sorotan bar.
  */
 export function BuildingBlockSection({ cluster }: BuildingBlockSectionProps) {
   const [platforms, setPlatforms] = useState<PlatformId[]>([]);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<BlockHover | null>(null);
   const query = useBuildingBlock({
     platforms,
     cluster,
@@ -96,7 +113,11 @@ export function BuildingBlockSection({ cluster }: BuildingBlockSectionProps) {
         emptyMessage="Belum ada konten terbit pada rentang tanggal ini."
         height="content"
       >
-        <div className="grid gap-5 min-[1100px]:grid-cols-3">
+        <div
+          ref={gridRef}
+          className="relative grid gap-5 min-[1100px]:grid-cols-3"
+          onMouseLeave={() => setHover(null)}
+        >
           {COLUMNS.map((column) => {
             const rows = [...(data?.blocks ?? [])].sort(
               (a, b) => b[column.key] - a[column.key]
@@ -116,7 +137,22 @@ export function BuildingBlockSection({ cluster }: BuildingBlockSectionProps) {
                     return (
                       <li
                         key={block.block}
-                        className="flex items-center gap-2 border-b border-border/70 py-2 last:border-b-0"
+                        className="group -mx-1 flex items-center gap-2 rounded-md border-b border-border/70 px-1 py-2 transition-colors last:border-b-0 hover:bg-muted/50"
+                        onMouseMove={(event) => {
+                          const grid = gridRef.current;
+                          if (!grid) return;
+                          const rect = grid.getBoundingClientRect();
+                          setHover({
+                            x: event.clientX - rect.left,
+                            y: event.clientY - rect.top,
+                            label: BUILDING_BLOCK_LABELS[block.block],
+                            columnTitle: column.title,
+                            color: column.fill,
+                            display: column.format(value),
+                            percent:
+                              value > 0 ? Math.round((value / max) * 100) : 0,
+                          });
+                        }}
                       >
                         <span className="w-4 shrink-0 text-[11px] font-bold tabular-nums text-blue-600 dark:text-blue-400">
                           {index + 1}
@@ -137,7 +173,7 @@ export function BuildingBlockSection({ cluster }: BuildingBlockSectionProps) {
                             aria-label={`${BUILDING_BLOCK_LABELS[block.block]}: ${column.format(value)}`}
                           >
                             <div
-                              className="h-full rounded-full"
+                              className="h-full rounded-full transition-[filter] duration-150 group-hover:brightness-125"
                               style={{
                                 width: `${width}%`,
                                 background: column.fill,
@@ -152,6 +188,21 @@ export function BuildingBlockSection({ cluster }: BuildingBlockSectionProps) {
               </div>
             );
           })}
+          {hover && (
+            <HoverTooltip
+              x={hover.x}
+              y={hover.y}
+              label={hover.label}
+              rows={[
+                {
+                  label: hover.columnTitle,
+                  color: hover.color,
+                  value: hover.display,
+                },
+                { label: "vs tertinggi", value: `${hover.percent}%` },
+              ]}
+            />
+          )}
         </div>
       </ChartCard>
     </div>
