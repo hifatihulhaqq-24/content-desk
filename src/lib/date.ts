@@ -6,11 +6,11 @@ export interface DateRange {
   to: Date;
 }
 
-export const RANGE_PRESETS = [
-  { label: "7 hari", days: 7 },
-  { label: "30 hari", days: 30 },
-  { label: "90 hari", days: 90 },
-] as const;
+/**
+ * Filter tanggal hanya punya satu pilihan: 7 hari (1 minggu) terakhir —
+ * berlaku untuk seluruh halaman analytics (catetan Prambanan).
+ */
+export const RANGE_PRESETS = [{ label: "7 hari", days: 7 }] as const;
 
 export type RangePresetDays = (typeof RANGE_PRESETS)[number]["days"];
 

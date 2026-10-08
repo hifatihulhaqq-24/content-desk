@@ -89,8 +89,17 @@ export interface PublishingTimeData {
   };
 }
 
-/** Tipe konten untuk Content Type Analysis. */
-export type ContentFormat = "Single Image" | "Video" | "Carousel";
+/**
+ * Tipe konten untuk Content Type Analysis — persis urutan mock
+ * kumparanDesk — PRODUCT MVP (5 tipe utama + Lainnya).
+ */
+export type ContentFormat =
+  | "TikTok Video"
+  | "YouTube Full Video"
+  | "Instagram Reels Video"
+  | "Facebook Video"
+  | "Facebook Link"
+  | "Lainnya";
 
 export interface ContentTypePoint {
   format: ContentFormat;
@@ -110,8 +119,18 @@ export interface ContentTypeData {
 
 export type ContentTypeQuery = ScopeQuery;
 
-/** Elemen pembentuk konten untuk Building Block Analysis. */
-export type BuildingBlockId = "svt" | "svl" | "onliner" | "carousel" | "vidol";
+/** Elemen pembentuk konten untuk Building Block Analysis (Top 10). */
+export type BuildingBlockId =
+  | "svt"
+  | "svl"
+  | "onliner"
+  | "carousel"
+  | "vidol"
+  | "infografis"
+  | "explainer"
+  | "liveReport"
+  | "quote"
+  | "polling";
 
 export interface BuildingBlockPoint {
   block: BuildingBlockId;
@@ -123,7 +142,7 @@ export interface BuildingBlockPoint {
 }
 
 export interface BuildingBlockData {
-  /** Maksimal 5 block (Top 5) — UI mengurutkan ulang per metrik terpilih. */
+  /** Semua block (Top 10 sesuai mock kumparanDesk — PRODUCT MVP). */
   blocks: BuildingBlockPoint[];
 }
 
@@ -139,8 +158,14 @@ export interface PlatformSummary {
   /** Kenaikan impression dibanding periode sebelumnya (%). */
   impressionsGrowthPercent: number | null;
   engagement: number;
+  /** Kenaikan engagement dibanding periode sebelumnya (%). */
+  engagementGrowthPercent: number | null;
   engagementRate: number | null;
+  /** Kenaikan engagement rate dibanding periode sebelumnya (%). */
+  engagementRateGrowthPercent: number | null;
   posts: number;
+  /** Kenaikan jumlah konten dibanding periode sebelumnya (%). */
+  postsGrowthPercent: number | null;
   /** Kontribusi jumlah konten terhadap total seluruh platform (%). */
   postsSharePercent: number;
 }
@@ -214,28 +239,41 @@ export interface ContentBucket {
   posts: Post[];
 }
 
-/** Pita distribusi pada kartu Median (di bawah / sesuai / di atas standar). */
-export interface MedianBucket {
-  key: "below" | "normal" | "above";
-  label: string;
-  /** Aturan ambang, mis. "< 0,7× standar". */
-  rule: string;
-  count: number;
+/**
+ * Distribusi jumlah konten terhadap standar per platform
+ * (pita baris Median: di bawah / sekitar / di atas standar).
+ */
+export interface MedianCounts {
+  /** < 0,7× standar (di bawah standar). */
+  below: number;
+  /** 0,7–1,3× standar (sekitar standar). */
+  around: number;
+  /** > 1,3× standar (di atas standar). */
+  above: number;
 }
 
-/** Insight Median per konten (Impression & Engagement). */
+/** Baris Median per platform — kolom tabel kartu Median. */
+export interface MedianRow {
+  platform: PlatformId;
+  name: string;
+  color: string;
+  /** Nilai tengah per konten pada periode berjalan. */
+  value: number;
+  /** Standar platform (median hari ke-7, 8 minggu terakhir). */
+  threshold: number;
+  /** value / threshold, mis. 1,08. */
+  ratio: number;
+  /** Jumlah konten sampel platform pada periode berjalan. */
+  sampleSize: number;
+  counts: MedianCounts;
+}
+
+/** Insight Median per konten (Impression & Engagement) — per platform. */
 export interface MedianInsight {
   key: "impressions" | "engagements";
   label: string;
-  /** Nilai tengah per konten pada periode berjalan. */
-  median: number;
-  /** Standar cluster (threshold eksternal — contract dari BE). */
-  threshold: number;
-  /** median / threshold, mis. 1,1. */
-  ratioToThreshold: number;
-  /** Jumlah konten sampel pada periode berjalan. */
-  sampleSize: number;
-  buckets: MedianBucket[];
+  /** Urutan baris = urutan platform tampil (Instagram, TikTok, YouTube, Facebook). */
+  rows: MedianRow[];
 }
 
 export interface ArticleSummary {

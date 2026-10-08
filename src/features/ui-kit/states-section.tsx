@@ -13,12 +13,12 @@ export function StatesSection() {
     <KitSection
       id="states"
       title="State & Filter"
-      description="Setiap komponen data wajib punya 4 state: idle, loading, success, error (UI States Guarantee). DateRangePicker tersedia di TopBar untuk seluruh halaman analytics."
+      description="Setiap komponen data wajib punya 4 state: idle, loading, success, error (UI States Guarantee). Filter tanggal (chip statis 7 hari terakhir) tersedia di TopBar untuk seluruh halaman analytics."
     >
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <DateRangePicker />
         <span className="text-xs text-muted-foreground">
-          DateRangePicker (preset 7/30/90 hari + custom range)
+          DateRangePicker (chip statis — 7 hari / 1 minggu terakhir)
         </span>
       </div>
 

@@ -4,14 +4,12 @@ import {
   createContext,
   useContext,
   useMemo,
-  useState,
   useSyncExternalStore,
 } from "react";
 import type { ReactNode } from "react";
 import type { DateRangeQuery } from "@/types/analytics";
 import {
   defaultDateRange,
-  presetDateRange,
   rangeToQuery,
   type DateRange,
 } from "@/lib/date";
@@ -41,9 +39,8 @@ interface DateRangeContextValue {
   query: DateRangeQuery;
   /** false selama hydration — query menunggu nilai tanggal yang asli. */
   ready: boolean;
-  presetDays: number | null;
-  setRange: (range: DateRange) => void;
-  applyPreset: (days: 7 | 30 | 90) => void;
+  /** Preset tunggal: 7 hari (1 minggu) terakhir. */
+  presetDays: number;
 }
 
 const DateRangeContext = createContext<DateRangeContextValue | null>(null);
@@ -54,23 +51,17 @@ export function DateRangeProvider({ children }: { children: ReactNode }) {
     getClientRange,
     getServerRange
   );
-  const [override, setOverride] = useState<{
-    range: DateRange;
-    presetDays: number | null;
-  } | null>(null);
 
   const value = useMemo<DateRangeContextValue>(() => {
-    const range = override?.range ?? defaultRange;
+    // Filter tanggal selalu 7 hari terakhir — tanpa preset/custom range lain.
+    const range = defaultRange;
     return {
       range,
       query: rangeToQuery(range),
       ready: defaultRange !== PLACEHOLDER_RANGE,
-      presetDays: override ? override.presetDays : 30,
-      setRange: (next) => setOverride({ range: next, presetDays: null }),
-      applyPreset: (days) =>
-        setOverride({ range: presetDateRange(days), presetDays: days }),
+      presetDays: 7,
     };
-  }, [defaultRange, override]);
+  }, [defaultRange]);
 
   return (
     <DateRangeContext.Provider value={value}>

@@ -121,16 +121,26 @@ function verifyCluster(cluster: string) {
 
   check(`${tag} medians=2`, data.medians.length === 2, `${data.medians.length}`);
   for (const insight of data.medians) {
-    check(`${tag} median ${insight.key} sample>0`, insight.sampleSize > 0, `${insight.sampleSize}`);
-    check(`${tag} median ${insight.key} value>=0`, insight.median >= 0);
-    check(`${tag} median ${insight.key} threshold>0`, insight.threshold > 0, `${insight.threshold}`);
-    const bucketSum = insight.buckets.reduce((sum, b) => sum + b.count, 0);
     check(
-      `${tag} median ${insight.key} bucket sum==sample`,
-      bucketSum === insight.sampleSize,
-      `${bucketSum}/${insight.sampleSize}`
+      `${tag} median ${insight.key} rows=${VISIBLE_PLATFORMS.length}`,
+      insight.rows.length === VISIBLE_PLATFORMS.length,
+      `${insight.rows.length}`
     );
-    check(`${tag} median ${insight.key} 3 buckets`, insight.buckets.length === 3);
+    for (const row of insight.rows) {
+      const at = `${tag} median ${insight.key}/${row.platform}`;
+      check(`${at} sample>0`, row.sampleSize > 0, `${row.sampleSize}`);
+      check(`${at} value>=0`, row.value >= 0);
+      check(`${at} threshold>0`, row.threshold > 0, `${row.threshold}`);
+      check(`${at} ratio>0`, row.ratio > 0, `${row.ratio}`);
+      check(`${at} platform color`, row.color.startsWith("#"), row.color);
+      const countSum =
+        row.counts.below + row.counts.around + row.counts.above;
+      check(
+        `${at} counts==sample`,
+        countSum === row.sampleSize,
+        `${countSum}/${row.sampleSize}`
+      );
+    }
   }
 
   // Filter tagging hanya memengaruhi Data Platform.
@@ -303,7 +313,7 @@ function verifyContentType() {
     const data = computeContentType(scope.query);
     const tag = `[ct:${scope.name}]`;
     check(
-      `${tag} formats=3`,
+      `${tag} formats=${CONTENT_FORMATS.length}`,
       data.formats.length === CONTENT_FORMATS.length,
       `${data.formats.length}`
     );
@@ -368,8 +378,8 @@ function verifyBuildingBlock() {
     const data = computeBuildingBlock(scope.query);
     const tag = `[bb:${scope.name}]`;
     check(
-      `${tag} blocks<=5`,
-      data.blocks.length <= 5 && data.blocks.length > 0,
+      `${tag} blocks<=10`,
+      data.blocks.length <= BUILDING_BLOCKS.length && data.blocks.length > 0,
       `${data.blocks.length}`
     );
     check(
@@ -396,7 +406,11 @@ function verifyBuildingBlock() {
       );
     }
     if (scope.name === "all") {
-      check(`${tag} blocks=5`, data.blocks.length === 5, `${data.blocks.length}`);
+      check(
+        `${tag} blocks=${BUILDING_BLOCKS.length}`,
+        data.blocks.length === BUILDING_BLOCKS.length,
+        `${data.blocks.length}`
+      );
       check(
         `${tag} every block used`,
         data.blocks.every((point) => point.content > 0),
@@ -487,14 +501,18 @@ check("empty pt totals=0", emptyPt.totals.content === 0 && emptyPt.totals.impres
 
 const emptyCt = emptyContentType();
 check(
-  "empty ct formats=3",
+  `empty ct formats=${CONTENT_FORMATS.length}`,
   emptyCt.formats.length === CONTENT_FORMATS.length,
   `${emptyCt.formats.length}`
 );
 check("empty ct totals=0", emptyCt.totals.content === 0 && emptyCt.totals.impressions === 0);
 
 const emptyBb = emptyBuildingBlock();
-check("empty bb blocks=5", emptyBb.blocks.length === BUILDING_BLOCKS.length, `${emptyBb.blocks.length}`);
+check(
+  `empty bb blocks=${BUILDING_BLOCKS.length}`,
+  emptyBb.blocks.length === BUILDING_BLOCKS.length,
+  `${emptyBb.blocks.length}`
+);
 check(
   "empty bb zeros",
   emptyBb.blocks.every((point) => point.content === 0 && point.impressions === 0)

@@ -28,7 +28,7 @@ interface DonutChartProps {
   className?: string;
 }
 
-/** Donut komposisi — maksimal 5 segmen (pedoman PRD). */
+/** Donut komposisi — maksimal 6 segmen (mock kumparanDesk — PRODUCT MVP). */
 export function DonutChart({
   data,
   centerLabel,
@@ -37,7 +37,7 @@ export function DonutChart({
   showLegend = true,
   className,
 }: DonutChartProps) {
-  const segments = data.slice(0, 5);
+  const segments = data.slice(0, 6);
   const total = centerValue ?? segments.reduce((sum, d) => sum + d.value, 0);
   const { ref, inView, prefersReducedMotion } = useInView<HTMLDivElement>();
   const animated = inView && !prefersReducedMotion;
@@ -51,9 +51,16 @@ export function DonutChart({
     <div
       ref={ref}
       data-state={inView ? "in-view" : "idle"}
-      className={cn("chart-reveal flex flex-col gap-4 sm:flex-row sm:items-center", className)}
+      className={cn(
+        "chart-reveal flex flex-col gap-4 sm:flex-row sm:items-center",
+        className
+      )}
     >
-      <div className="relative min-w-0 flex-1" style={{ height }}>
+      {/* Donut persegi fixed (kiri) — legend fleksibel (kanan) supaya tidak tabrakan. */}
+      <div
+        className="relative shrink-0 mx-auto sm:mx-0"
+        style={{ height, width: height }}
+      >
         <ChartContainer
           config={config}
           className="aspect-auto h-full w-full [&_.recharts-sector]:transition-[filter] [&_.recharts-sector]:duration-150 [&_.recharts-sector:hover]:brightness-[1.08]"
@@ -92,7 +99,7 @@ export function DonutChart({
         </ChartContainer>
         {segments.length > 0 && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-semibold tabular-nums">
+            <span className="text-xl font-semibold tabular-nums">
               {formatCompact(total)}
             </span>
             {centerLabel && (
@@ -103,7 +110,7 @@ export function DonutChart({
       </div>
 
       {showLegend && (
-        <ul className="flex shrink-0 flex-col gap-1.5 sm:w-44">
+        <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
           {segments.map((segment, index) => (
             <li
               key={segment.label}
@@ -121,10 +128,15 @@ export function DonutChart({
                   {segment.label}
                 </span>
               </span>
-              <span className="font-medium tabular-nums">
-                {total > 0
-                  ? `${Math.round((segment.value / total) * 100)}%`
-                  : "—"}
+              <span className="shrink-0 whitespace-nowrap tabular-nums">
+                <span className="font-semibold">
+                  {total > 0
+                    ? `${Math.round((segment.value / total) * 100)}%`
+                    : "—"}
+                </span>{" "}
+                <span className="text-muted-foreground">
+                  {formatCompact(segment.value)}
+                </span>
               </span>
             </li>
           ))}

@@ -23,7 +23,7 @@ export function CompositionSection() {
     <KitSection
       id="bar-donut"
       title="BarChart, DonutChart & Heatmap"
-      description="Perbandingan antar kategori, komposisi dari total, dan pola waktu. Sumbu nilai selalu mulai dari 0; donut maksimal 5 segmen."
+      description="Perbandingan antar kategori, komposisi dari total, dan pola waktu. Sumbu nilai selalu mulai dari 0; donut maksimal 6 segmen."
     >
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
@@ -61,7 +61,7 @@ export function CompositionSection() {
 
         <ChartCard
           title="Donut — Komposisi followers"
-          description="Label tengah total + legend persentase"
+          description="Label tengah total + legend persentase + nilai"
           height={240}
         >
           <DonutChart

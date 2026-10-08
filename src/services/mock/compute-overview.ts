@@ -137,6 +137,15 @@ function weeklyStandard(
   return weekMedians.length > 0 ? median(weekMedians) : null;
 }
 
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/**
+ * Median Impression & Engagement per konten — dipecah per platform.
+ * Standar dihitung per platform (konten TikTok dibanding TikTok, dst.),
+ * sesuai mock kumparanDesk — PRODUCT MVP.
+ */
 function computeMedians(
   currentPosts: Post[],
   standardPosts: Post[]
@@ -151,41 +160,33 @@ function computeMedians(
     label: string
   ): MedianInsight => {
     const extract = valueOf[key];
-    const values = currentPosts.map(extract);
-    const med = median(values);
-    const standard = weeklyStandard(standardPosts, extract) ?? med;
-    const ratio = standard > 0 ? round1(med / standard) : 0;
-    const below = values.filter((value) => value < standard * 0.7).length;
-    const above = values.filter((value) => value > standard * 1.3).length;
-    const normal = Math.max(0, values.length - below - above);
-    return {
-      key,
-      label,
-      median: med,
-      threshold: standard,
-      ratioToThreshold: ratio,
-      sampleSize: values.length,
-      buckets: [
-        {
-          key: "below",
-          label: "Di bawah standar",
-          rule: "< 0,7× standar",
-          count: below,
-        },
-        {
-          key: "normal",
-          label: "Sesuai standar",
-          rule: "0,7–1,3× standar",
-          count: normal,
-        },
-        {
-          key: "above",
-          label: "Di atas standar",
-          rule: "> 1,3× standar",
-          count: above,
-        },
-      ],
-    };
+    const rows: MedianInsight["rows"] = VISIBLE_PLATFORMS.map((platform) => {
+      const ids = new Set(platform.accounts.map((account) => account.id));
+      const values = currentPosts
+        .filter((post) => ids.has(post.accountId))
+        .map(extract);
+      const standard =
+        weeklyStandard(
+          standardPosts.filter((post) => ids.has(post.accountId)),
+          extract
+        ) ?? median(values);
+      const med = median(values);
+      const ratio = standard > 0 ? round2(med / standard) : 0;
+      const below = values.filter((value) => value < standard * 0.7).length;
+      const above = values.filter((value) => value > standard * 1.3).length;
+      const around = Math.max(0, values.length - below - above);
+      return {
+        platform: platform.id,
+        name: platform.name,
+        color: platform.color,
+        value: med,
+        threshold: standard,
+        ratio,
+        sampleSize: values.length,
+        counts: { below, around, above },
+      };
+    });
+    return { key, label, rows };
   };
 
   return [
@@ -202,6 +203,15 @@ function platformImpressions(posts: Post[], accountIds: Set<string>): number {
   return impressions;
 }
 
+/**
+ * Kenaikan vs periode sebelumnya (%). Relatif — pakai "%" (bukan pp)
+ * sesuai pedoman tampilan KPI.
+ */
+function growthPercent(current: number, previous: number): number | null {
+  if (previous <= 0) return null;
+  return round1(((current - previous) / Math.abs(previous)) * 100);
+}
+
 function summarizePlatform(
   platform: (typeof VISIBLE_PLATFORMS)[number],
   previousPosts: Post[],
@@ -210,7 +220,15 @@ function summarizePlatform(
   aggregate: RangeAggregate
 ): PlatformSummary {
   const ids = new Set(platform.accounts.map((account) => account.id));
+  const prev = previousPosts.filter((post) => ids.has(post.accountId));
   const prevImpressions = platformImpressions(previousPosts, ids);
+  const prevEngagement = prev.reduce(
+    (sum, post) => sum + engagementOf(post),
+    0
+  );
+  const prevReach = prev.reduce((sum, post) => sum + post.metrics.reach, 0);
+  const prevRate = prevReach > 0 ? (prevEngagement / prevReach) * 100 : null;
+
   const growth =
     prevImpressions > 0
       ? round1(
@@ -235,8 +253,17 @@ function summarizePlatform(
         : 0,
     impressionsGrowthPercent: growth,
     engagement: aggregate.totals.engagement,
+    engagementGrowthPercent: growthPercent(
+      aggregate.totals.engagement,
+      prevEngagement
+    ),
     engagementRate,
+    engagementRateGrowthPercent:
+      engagementRate !== null && prevRate !== null
+        ? growthPercent(engagementRate, prevRate)
+        : null,
     posts: aggregate.postsCount,
+    postsGrowthPercent: growthPercent(aggregate.postsCount, prev.length),
     postsSharePercent:
       totalPosts > 0 ? round1((aggregate.postsCount / totalPosts) * 100) : 0,
   };

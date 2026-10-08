@@ -91,6 +91,42 @@
   --platform-youtube: #ff0000;
   --platform-facebook: #1877f2;
   --platform-x: #000000;
+  /* Palet chart per metrik — mengikuti mock kumparanDesk — PRODUCT MVP.
+     Dipakai Publishing Time (soft/dark) & Content Type (shade 1–6). */
+  --chart-content: #2563eb;
+  --chart-content-soft: #bfd0fa;
+  --chart-content-dark: #1d4ed8;
+  --chart-impressions: #14b8a6;
+  --chart-impressions-soft: #b9e4dc;
+  --chart-impressions-dark: #0f766e;
+  --chart-engagements: #f97316;
+  --chart-engagements-soft: #fbd5b0;
+  --chart-engagements-dark: #c2410c;
+  --chart-shade-blue-1: #1e3a8a;
+  --chart-shade-blue-2: #1d4ed8;
+  --chart-shade-blue-3: #3b82f6;
+  --chart-shade-blue-4: #60a5fa;
+  --chart-shade-blue-5: #93c5fd;
+  --chart-shade-blue-6: #dbeafe;
+  --chart-shade-teal-1: #134e4a;
+  --chart-shade-teal-2: #0f766e;
+  --chart-shade-teal-3: #14b8a6;
+  --chart-shade-teal-4: #5eead4;
+  --chart-shade-teal-5: #99f6e4;
+  --chart-shade-teal-6: #ccfbf1;
+  --chart-shade-orange-1: #7c2d12;
+  --chart-shade-orange-2: #c2410c;
+  --chart-shade-orange-3: #f97316;
+  --chart-shade-orange-4: #fb923c;
+  --chart-shade-orange-5: #fdba74;
+  --chart-shade-orange-6: #ffedd5;
+  /* Bar Building Block (per metrik) — isi + track, mock kumparanDesk. */
+  --chart-block-content: #3b82f6;
+  --chart-block-content-track: #eef2ff;
+  --chart-block-impressions: #14b8a6;
+  --chart-block-impressions-track: #e6f7f4;
+  --chart-block-engagements: #f97316;
+  --chart-block-engagements-track: #fff1e6;
   --radius: 0.625rem;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
@@ -127,6 +163,10 @@
   --chart-3: oklch(0.84 0.09 255);
   --chart-4: oklch(0.9 0.06 251);
   --chart-5: oklch(0.95 0.04 247);
+  /* Track bar Building Block — versi gelap supaya tidak menyilaukan. */
+  --chart-block-content-track: #17233c;
+  --chart-block-impressions-track: #0e2a26;
+  --chart-block-engagements-track: #33170a;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

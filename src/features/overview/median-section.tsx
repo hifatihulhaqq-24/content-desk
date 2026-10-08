@@ -3,9 +3,9 @@
 import { EmptyState, ErrorState } from "@/components/data/states";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { QueryUiState } from "@/hooks/use-analytics";
-import { formatCompact, formatNumber } from "@/lib/format";
+import { formatCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { MedianBucket, MedianInsight } from "@/types/analytics";
+import type { MedianInsight, MedianRow } from "@/types/analytics";
 
 interface MedianSectionProps {
   status: QueryUiState;
@@ -13,103 +13,160 @@ interface MedianSectionProps {
   onRetry: () => void;
 }
 
-/** Warna pita: di bawah (amber), sesuai (abu), di atas (biru chart-1). */
-const BUCKET_STYLES: Record<MedianBucket["key"], { bar: string; dot: string }> = {
-  below: { bar: "var(--color-amber-500)", dot: "bg-amber-500" },
-  normal: { bar: "var(--color-muted-foreground)", dot: "bg-muted-foreground" },
-  above: { bar: "var(--color-chart-1)", dot: "bg-[var(--chart-1)]" },
-};
+/** Warna pita baris: di bawah (merah), sekitar (slate), di atas (hijau). */
+const BAR_BELOW = "var(--color-red-500)";
+const BAR_AROUND = "var(--color-slate-300)";
+const BAR_ABOVE = "var(--color-green-600)";
+
+/** Delta vs standar — persis format mock: "▲ 8%" / "▼ 5%". */
+function ratioDelta(ratio: number): { text: string; up: boolean } {
+  const pct = Math.round((ratio - 1) * 100);
+  return {
+    text: `${pct >= 0 ? "▲" : "▼"} ${Math.abs(pct)}%`,
+    up: pct >= 0,
+  };
+}
 
 function MedianSkeleton() {
   return (
-    <div className="rounded-xl bg-card p-4 shadow-xs">
+    <div className="rounded-xl bg-card p-4 text-card-foreground shadow-xs">
       <Skeleton className="h-4 w-40" />
-      <Skeleton className="mt-3 h-8 w-24" />
-      <Skeleton className="mt-4 h-2 w-full" />
+      <div className="mt-3 space-y-2">
+        {Array.from({ length: 4 }, (_, index) => (
+          <Skeleton key={index} className="h-8 w-full" />
+        ))}
+      </div>
       <div className="mt-3 flex gap-4">
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-8 w-24" />
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-3 w-28" />
       </div>
     </div>
   );
 }
 
 function MedianCard({ insight }: { insight: MedianInsight }) {
-  const total = insight.buckets.reduce((sum, bucket) => sum + bucket.count, 0);
   return (
     <div className="rounded-xl bg-card p-4 text-card-foreground shadow-xs">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-sm font-semibold">{insight.label}</p>
-        <p className="text-xs text-muted-foreground">
-          Standar cluster:{" "}
-          <b className="font-medium text-foreground tabular-nums">
-            {formatCompact(insight.threshold)}
-          </b>
-        </p>
+      <h3 className="text-[15px] font-bold">{insight.label}</h3>
+
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full border-collapse text-[13px]">
+          <thead>
+            <tr>
+              <th className="px-2.5 py-2 text-left text-[11.5px] font-medium text-muted-foreground">
+                Platform
+              </th>
+              <th className="px-2.5 py-2 text-right text-[11.5px] font-medium text-muted-foreground">
+                Nilai tengah
+              </th>
+              <th className="px-2.5 py-2 text-right text-[11.5px] font-medium text-muted-foreground">
+                Standar
+              </th>
+              <th className="w-[40%] px-2.5 py-2 text-left text-[11.5px] font-medium text-muted-foreground">
+                Jumlah konten vs standar
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {insight.rows.map((row) => (
+              <MedianRowCells key={row.platform} row={row} />
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <p className="text-3xl font-semibold tracking-tight tabular-nums">
-          {formatCompact(insight.median)}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          nilai tengah{" "}
-          <b className="font-medium text-foreground tabular-nums">
-            {formatNumber(insight.sampleSize)}
-          </b>{" "}
-          konten
-          {insight.ratioToThreshold > 0 && (
-            <>
-              {" · "}
-              <b className="font-medium text-foreground tabular-nums">
-                {formatNumber(insight.ratioToThreshold, 1)}×
-              </b>{" "}
-              standar
-            </>
-          )}
-        </p>
-      </div>
-
-      {/* Bar distribusi relatif terhadap standar cluster */}
-      <div
-        className="mt-4 flex h-2 overflow-hidden rounded-full bg-muted"
-        role="img"
-        aria-label={`Distribusi: ${insight.buckets
-          .map((bucket) => `${bucket.label} ${bucket.count} konten`)
-          .join(", ")}`}
-      >
-        {insight.buckets.map((bucket) => (
-          <div
-            key={bucket.key}
-            className="h-full transition-all"
-            style={{
-              width: total > 0 ? `${(bucket.count / total) * 100}%` : "0%",
-              backgroundColor: BUCKET_STYLES[bucket.key].bar,
-            }}
+      <div className="mt-2 flex flex-wrap gap-x-3.5 gap-y-1 text-[11.5px] text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <span
+            aria-hidden
+            className="size-[9px] shrink-0 rounded-sm"
+            style={{ background: BAR_BELOW }}
           />
-        ))}
-      </div>
-
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        {insight.buckets.map((bucket) => (
-          <div key={bucket.key} className="min-w-0">
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span
-                className={cn("size-2 shrink-0 rounded-full", BUCKET_STYLES[bucket.key].dot)}
-                aria-hidden
-              />
-              <span className="truncate">{bucket.label}</span>
-            </span>
-            <p className="mt-1 text-sm font-medium tabular-nums">
-              {formatNumber(bucket.count)}{" "}
-              <span className="font-normal text-muted-foreground">konten</span>
-            </p>
-            <p className="text-[11px] text-muted-foreground">{bucket.rule}</p>
-          </div>
-        ))}
+          Di bawah standar (&lt; −30%)
+        </span>
+        <span className="flex items-center gap-1">
+          <span
+            aria-hidden
+            className="size-[9px] shrink-0 rounded-sm"
+            style={{ background: BAR_AROUND }}
+          />
+          Sekitar standar (±30%)
+        </span>
+        <span className="flex items-center gap-1">
+          <span
+            aria-hidden
+            className="size-[9px] shrink-0 rounded-sm"
+            style={{ background: BAR_ABOVE }}
+          />
+          Di atas standar (&gt; +30%)
+        </span>
       </div>
     </div>
+  );
+}
+
+function MedianRowCells({ row }: { row: MedianRow }) {
+  const total = row.counts.below + row.counts.around + row.counts.above;
+  const pct = (count: number) => (total > 0 ? (count / total) * 100 : 0);
+  const delta = ratioDelta(row.ratio);
+
+  return (
+    <tr>
+      <th
+        scope="row"
+        className="whitespace-nowrap border-b px-2.5 py-2.5 text-left font-semibold"
+      >
+        <span
+          aria-hidden
+          className="mr-1.5 inline-block size-[9px] rounded-sm align-middle"
+          style={{ background: row.color }}
+        />
+        {row.name}
+      </th>
+      <td className="whitespace-nowrap border-b px-2.5 py-2.5 text-right tabular-nums">
+        <span className="font-bold">{formatCompact(row.value)}</span>{" "}
+        <span
+          className={cn(
+            "text-[11.5px] font-semibold",
+            delta.up
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-red-600 dark:text-red-400"
+          )}
+        >
+          {delta.text}
+        </span>
+      </td>
+      <td className="whitespace-nowrap border-b px-2.5 py-2.5 text-right tabular-nums text-muted-foreground">
+        {formatCompact(row.threshold)}
+      </td>
+      <td className="min-w-[160px] border-b px-2.5 py-2.5">
+        <div
+          className="flex h-2 gap-0.5 overflow-hidden rounded-full"
+          role="img"
+          aria-label={`${row.name}: ${row.counts.below} di bawah standar, ${row.counts.around} sekitar standar, ${row.counts.above} di atas standar`}
+        >
+          <div
+            style={{ width: `${pct(row.counts.below)}%`, background: BAR_BELOW }}
+          />
+          <div
+            style={{ width: `${pct(row.counts.around)}%`, background: BAR_AROUND }}
+          />
+          <div
+            style={{ width: `${pct(row.counts.above)}%`, background: BAR_ABOVE }}
+          />
+        </div>
+        <div className="mt-1 flex justify-between text-[11.5px] tabular-nums">
+          <span className="font-semibold text-red-700 dark:text-red-400">
+            {row.counts.below}
+          </span>
+          <span className="text-muted-foreground">{row.counts.around}</span>
+          <span className="font-semibold text-green-700 dark:text-green-400">
+            {row.counts.above}
+          </span>
+        </div>
+      </td>
+    </tr>
   );
 }
 
@@ -124,7 +181,7 @@ export function MedianSection({
 
   if (status === "loading") {
     return (
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 min-[900px]:grid-cols-2">
         <MedianSkeleton />
         <MedianSkeleton />
       </div>
@@ -134,7 +191,7 @@ export function MedianSection({
   if (
     status === "empty" ||
     medians.length === 0 ||
-    medians.every((insight) => insight.sampleSize === 0)
+    medians.every((insight) => insight.rows.every((row) => row.sampleSize === 0))
   ) {
     return (
       <EmptyState
@@ -146,18 +203,20 @@ export function MedianSection({
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 min-[900px]:grid-cols-2">
         {medians.map((insight) => (
           <MedianCard key={insight.key} insight={insight} />
         ))}
       </div>
-      <p className="text-xs text-muted-foreground">
-        <b className="font-medium text-foreground">Cara membaca:</b> Median
-        adalah nilai tengah dari seluruh konten pada periode ini (setengah konten
-        di atas, setengah di bawah). Standar cluster adalah median impression /
-        engagement per konten dari 8 minggu terakhir; konten dengan nilai
-        0,7–1,3× standar termasuk normal, di bawah itu di bawah standar, dan di
-        atas itu di atas standar.
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        <b className="font-medium text-foreground">Cara membaca:</b> nilai
+        tengah (median) = angka di posisi tengah kalau semua konten diurutkan,
+        jadi separuh konten di atasnya dan separuh di bawahnya; tidak terdorong
+        oleh satu konten viral. Standar = nilai tengah Impression/Engagement
+        hari ke-7 konten cluster ini{" "}
+        <b className="font-medium text-foreground">di platform yang sama</b>{" "}
+        selama 8 minggu terakhir, jadi konten TikTok dibanding TikTok, YouTube
+        dibanding YouTube. Angka di bawah bar = jumlah konten per kelompok.
       </p>
     </div>
   );

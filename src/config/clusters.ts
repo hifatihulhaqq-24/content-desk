@@ -1,12 +1,16 @@
+/** Urutan cluster sesuai dropdown mock kumparanDesk — PRODUCT MVP. */
 export const CLUSTERS = [
   "News",
   "Bisnis",
-  "Bola & Sport",
-  "Bolanita",
+  "Bola & Sports",
+  "Bolanita X CSI",
   "Entertainment",
   "Mom",
-  "Woman",
+  "Ngewarta",
   "Otomotif",
+  "Tekno & Sains",
+  "Woman",
+  "Others",
 ] as const;
 
 export type ClusterId = (typeof CLUSTERS)[number];

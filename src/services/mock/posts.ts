@@ -13,56 +13,101 @@ const POST_WINDOW_DAYS = 180;
 const SECOND_POST_PROBABILITY = 0.3;
 
 /**
- * Peta tipe konten platform → format analitik lintas platform.
- * Format diturunkan dari tipe agar analisis post, Content Type Analysis,
- * dan filter tipe selalu konsisten (A11).
+ * Format analitik per tipe konten platform — persis kategori Content Type
+ * Analysis di mock kumparanDesk — PRODUCT MVP (5 tipe utama + Lainnya).
+ * Format diturunkan dari platform + tipe agar analisis post, Content Type
+ * Analysis, dan filter tipe selalu konsisten (A11).
  */
-const TYPE_FORMAT: Record<string, ContentFormat> = {
-  Carousel: "Carousel",
-  Reels: "Video",
-  Reel: "Video",
-  "Video Pendek": "Video",
-  Video: "Video",
-  Short: "Video",
-  Live: "Video",
-  LIVE: "Video",
-  Media: "Video",
-  Image: "Single Image",
-  Foto: "Single Image",
-  Link: "Single Image",
-  Post: "Single Image",
-  Poll: "Single Image",
-  Story: "Single Image",
-};
-
-function formatOfType(type: string): ContentFormat {
-  return TYPE_FORMAT[type] ?? "Single Image";
+function formatOfType(type: string, platform: PlatformId): ContentFormat {
+  if (platform === "tiktok" && type === "Video Pendek") return "TikTok Video";
+  if (platform === "youtube" && type === "Video")
+    return "YouTube Full Video";
+  if (platform === "instagram" && type === "Reels")
+    return "Instagram Reels Video";
+  if (platform === "facebook" && type === "Video") return "Facebook Video";
+  if (platform === "facebook" && type === "Link") return "Facebook Link";
+  return "Lainnya";
 }
 
 /**
- * Bobot building block per platform. Block CAROUSEL ≡ format Carousel:
- * pada post Carousel, building block selalu "carousel"; pada post
- * non-Carousel, bobot "carousel" dihilangkan (dinosialisasi ulang).
+ * Bobot building block per platform (10 block, mock kumparanDesk —
+ * PRODUCT MVP). Block CAROUSEL ≡ tipe Carousel: pada post tipe Carousel,
+ * building block selalu "carousel"; pada tipe lain, bobot "carousel"
+ * dihilangkan (dinosialisasi ulang).
  */
 function blockWeights(
   platform: PlatformId,
-  format: ContentFormat
+  type: string
 ): Record<BuildingBlockId, number> {
   const weights = { ...BLOCK_WEIGHTS[platform] };
   (Object.keys(weights) as BuildingBlockId[]).forEach((key) => {
-    const allowed =
-      format === "Carousel" ? key === "carousel" : key !== "carousel";
+    const allowed = type === "Carousel" ? key === "carousel" : key !== "carousel";
     if (!allowed) weights[key] = 0;
   });
   return weights;
 }
 
 const BLOCK_WEIGHTS: Record<PlatformId, Record<BuildingBlockId, number>> = {
-  instagram: { svt: 15, svl: 15, onliner: 20, carousel: 35, vidol: 15 },
-  tiktok: { svt: 30, svl: 25, onliner: 10, carousel: 15, vidol: 20 },
-  youtube: { svt: 20, svl: 25, onliner: 10, carousel: 5, vidol: 40 },
-  facebook: { svt: 15, svl: 20, onliner: 30, carousel: 20, vidol: 15 },
-  x: { svt: 15, svl: 30, onliner: 30, carousel: 10, vidol: 15 },
+  instagram: {
+    svt: 15,
+    svl: 15,
+    onliner: 20,
+    carousel: 35,
+    vidol: 15,
+    infografis: 9,
+    explainer: 7,
+    liveReport: 4,
+    quote: 6,
+    polling: 3,
+  },
+  tiktok: {
+    svt: 30,
+    svl: 25,
+    onliner: 10,
+    carousel: 15,
+    vidol: 20,
+    infografis: 6,
+    explainer: 5,
+    liveReport: 6,
+    quote: 4,
+    polling: 3,
+  },
+  youtube: {
+    svt: 20,
+    svl: 25,
+    onliner: 10,
+    carousel: 5,
+    vidol: 40,
+    infografis: 8,
+    explainer: 10,
+    liveReport: 4,
+    quote: 5,
+    polling: 3,
+  },
+  facebook: {
+    svt: 15,
+    svl: 20,
+    onliner: 30,
+    carousel: 20,
+    vidol: 15,
+    infografis: 12,
+    explainer: 7,
+    liveReport: 5,
+    quote: 6,
+    polling: 4,
+  },
+  x: {
+    svt: 15,
+    svl: 30,
+    onliner: 30,
+    carousel: 10,
+    vidol: 15,
+    infografis: 7,
+    explainer: 5,
+    liveReport: 4,
+    quote: 7,
+    polling: 5,
+  },
 };
 
 const CAPTIONS = [
@@ -108,9 +153,9 @@ export function postsForAccount(accountId: string): Post[] {
       const hour = pickHour(accountId, platform.id, accountId, i, variant);
       const minute = randInt(0, 59, accountId, i, "m");
       const type = pick(platform.contentTypes, accountId, i, "t");
-      const format = formatOfType(type);
+      const format = formatOfType(type, platform.id);
       const buildingBlock = weightedKey(
-        blockWeights(platform.id, format),
+        blockWeights(platform.id, type),
         accountId,
         i,
         "bb"

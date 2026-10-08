@@ -1,12 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { DeltaBadge } from "@/components/data/delta-badge";
 import { EmptyState, ErrorState } from "@/components/data/states";
-import { PlatformIcon } from "@/components/icons/platform-icon";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { QueryUiState } from "@/hooks/use-analytics";
 import { formatCompact, formatNumber, formatPercent } from "@/lib/format";
@@ -34,7 +31,7 @@ export function PlatformSummarySection({
 
   if (status === "loading") {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 min-[600px]:grid-cols-2 min-[1100px]:grid-cols-4">
         {Array.from({ length: 4 }, (_, index) => (
           <div
             key={index}
@@ -61,16 +58,14 @@ export function PlatformSummarySection({
 
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h2 className="text-lg font-semibold">Data Platform</h2>
-        <p className="text-xs text-muted-foreground">
-          Performa per platform berdasarkan Impression, kontribusi, Engagement dan Jumlah konten.
-        </p>
-      </div>
+      <h2 className="text-[17px] font-bold">Data Platform</h2>
       <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Tagging</span>
+        <span className="text-[13px] text-muted-foreground">Tagging</span>
         <Select value={tagging} onValueChange={onTaggingChange}>
-          <SelectTrigger className="h-8 w-36" aria-label="Filter tagging">
+          <SelectTrigger
+            className="h-10 w-40"
+            aria-label="Filter tagging"
+          >
             <SelectValue placeholder="Semua tagging" />
           </SelectTrigger>
           <SelectContent>
@@ -89,81 +84,97 @@ export function PlatformSummarySection({
   return (
     <div className="space-y-3">
       {header}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 min-[600px]:grid-cols-2 min-[1100px]:grid-cols-4">
         {summaries.map((summary) => (
           <Link
             key={summary.platform}
             href={`/analytics/${summary.platform}`}
-            className="group rounded-xl bg-card p-4 text-card-foreground shadow-xs transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+            className="group flex flex-col gap-2.5 rounded-xl bg-card p-4 text-card-foreground shadow-xs transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
           >
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
-                <PlatformIcon
-                  platform={summary.platform}
-                  className="size-4 shrink-0"
-                  style={{ color: summary.color }}
-                />
-                <span className="truncate">{summary.name}</span>
-              </span>
-              <ArrowUpRight
-                className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
+            <div className="flex items-center gap-2">
+              <span
                 aria-hidden
+                className="size-2.5 shrink-0 rounded-[3px]"
+                style={{ background: summary.color }}
               />
+              <span className="truncate text-sm font-semibold">
+                {summary.name}
+              </span>
             </div>
 
-            <p className="mt-3 text-2xl font-semibold tracking-tight tabular-nums">
-              {formatCompact(summary.impressions)}
-            </p>
-            <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>Impression</span>
+            <div className="flex items-baseline justify-between gap-2">
+              <div>
+                <p className="text-[22px] font-bold tabular-nums">
+                  {formatCompact(summary.impressions)}
+                </p>
+                <p className="text-xs text-muted-foreground">Impression</p>
+              </div>
               <DeltaBadge value={summary.impressionsGrowthPercent} />
             </div>
 
-            <dl className="mt-3 space-y-2 border-t pt-3 text-xs">
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <dt className="text-muted-foreground">Kontribusi Impression</dt>
-                  <dd className="font-medium tabular-nums">
-                    {formatPercent(summary.impressionsSharePercent)}
-                  </dd>
-                </div>
-                <Progress
-                  value={Math.max(5, Math.min(100, summary.impressionsSharePercent))}
-                  className="mt-1 h-1.5"
-                  aria-hidden
+            <div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-2.5">
+              <p className="text-xs text-muted-foreground">
+                Kontribusi Impression{" "}
+                <b className="font-semibold text-foreground tabular-nums">
+                  {formatPercent(summary.impressionsSharePercent)}
+                </b>{" "}
+                · konten{" "}
+                <b className="font-semibold text-foreground tabular-nums">
+                  {formatPercent(summary.postsSharePercent)}
+                </b>
+              </p>
+              <div
+                className="h-1.5 overflow-hidden rounded-full bg-muted"
+                role="img"
+                aria-label={`Kontribusi impression ${formatPercent(summary.impressionsSharePercent)}`}
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.max(0, Math.min(100, summary.impressionsSharePercent))}%`,
+                    background: summary.color,
+                  }}
                 />
               </div>
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <dt className="text-muted-foreground">Kontribusi konten</dt>
-                  <dd className="font-medium tabular-nums">
-                    {formatPercent(summary.postsSharePercent)}
-                  </dd>
-                </div>
-                <Progress
-                  value={Math.max(5, Math.min(100, summary.postsSharePercent))}
-                  className="mt-1 h-1.5"
-                  aria-hidden
-                />
-              </div>
+            </div>
+
+            <dl className="flex flex-col gap-2 border-t pt-2 text-xs">
               <div className="flex items-center justify-between gap-2">
                 <dt className="text-muted-foreground">Engagement</dt>
-                <dd className="font-medium tabular-nums">
-                  {formatCompact(summary.engagement)}
+                <dd className="flex items-center gap-1.5">
+                  <span className="font-semibold tabular-nums">
+                    {formatCompact(summary.engagement)}
+                  </span>
+                  <DeltaBadge
+                    value={summary.engagementGrowthPercent}
+                    className="text-[11px]"
+                  />
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <dt className="text-muted-foreground">Engagement Rate</dt>
-                <dd className="font-medium tabular-nums">
-                  {summary.engagementRate !== null
-                    ? formatPercent(summary.engagementRate)
-                    : "—"}
+                <dd className="flex items-center gap-1.5">
+                  <span className="font-semibold tabular-nums">
+                    {summary.engagementRate !== null
+                      ? formatPercent(summary.engagementRate)
+                      : "—"}
+                  </span>
+                  <DeltaBadge
+                    value={summary.engagementRateGrowthPercent}
+                    className="text-[11px]"
+                  />
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <dt className="text-muted-foreground">Jumlah konten</dt>
-                <dd className="font-medium tabular-nums">
-                  {formatNumber(summary.posts)}
+                <dd className="flex items-center gap-1.5">
+                  <span className="font-semibold tabular-nums">
+                    {formatNumber(summary.posts)}
+                  </span>
+                  <DeltaBadge
+                    value={summary.postsGrowthPercent}
+                    className="text-[11px]"
+                  />
                 </dd>
               </div>
             </dl>

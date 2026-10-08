@@ -46,7 +46,7 @@ export function KpiSection({
 
   if (status === "loading") {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 min-[600px]:grid-cols-2 min-[1100px]:grid-cols-4">
         {Array.from({ length: 4 }, (_, index) => (
           <StatCard key={index} label="" value={0} loading />
         ))}
@@ -56,7 +56,7 @@ export function KpiSection({
 
   return (
     <div className="space-y-2">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 min-[600px]:grid-cols-2 min-[1100px]:grid-cols-4">
         {kpis.map((kpi) => (
           <StatCard
             key={kpi.key}
@@ -64,7 +64,7 @@ export function KpiSection({
             value={kpi.value}
             format={kpi.format}
             deltaPercent={kpi.deltaPercent}
-            deltaUnit={kpi.deltaUnit === "pp" ? "pp" : "%"}
+            deltaUnit="%"
             sparkline={sparklineFromTrend(trendPoints, kpi.key)}
             previousSparkline={sparklineFromTrend(previousPoints, kpi.key)}
             axisLabels={axisLabels}

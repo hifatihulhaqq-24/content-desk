@@ -99,7 +99,7 @@ export function OverviewView() {
 
           <Separator />
 
-          <PublishingTimeSection cluster={cluster} />
+          <PublishingTimeSection />
 
           <Separator />
 
