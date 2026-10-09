@@ -74,7 +74,7 @@ export function BriefSection({
             <p className="text-xs text-muted-foreground">{description}</p>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1 print:hidden">
           {onRegenerate && sectionKey && (
             <Button
               type="button"

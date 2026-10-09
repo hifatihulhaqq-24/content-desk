@@ -322,3 +322,31 @@ export function exportJson(meta: BriefMeta, draft: BriefData): void {
     "application/json;charset=utf-8"
   );
 }
+
+/**
+ * Ekspor PDF memakai print-to-PDF (tanpa library): yang dicetak adalah isi
+ * brief di layar, lalu user memilih "Save as PDF" di dialog browser.
+ *
+ * Class `dark` dilepas sementara supaya hasil PDF selalu terang dan kontras,
+ * lalu dikembalikan begitu dialog cetak selesai.
+ */
+export function exportPdf(): void {
+  if (typeof window === "undefined") return;
+
+  const root = document.documentElement;
+  const wasDark = root.classList.contains("dark");
+  let restored = false;
+
+  const restore = () => {
+    if (restored) return;
+    restored = true;
+    if (wasDark) root.classList.add("dark");
+    window.removeEventListener("afterprint", restore);
+  };
+
+  window.addEventListener("afterprint", restore);
+  window.print();
+  // `window.print()` memblokir sampai dialog tertutup; ini cadangan bila
+  // browser tidak memicu `afterprint`.
+  restore();
+}

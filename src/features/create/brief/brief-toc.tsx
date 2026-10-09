@@ -54,7 +54,7 @@ export function BriefToc({ items }: BriefTocProps) {
   return (
     <nav
       aria-label="Daftar isi brief"
-      className="rounded-xl border border-border bg-card p-3 shadow-xs lg:sticky lg:top-20"
+      className="rounded-xl border border-border bg-card p-3 shadow-xs lg:sticky lg:top-20 print:hidden"
     >
       <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Daftar isi

@@ -2,6 +2,7 @@
 
 import {
   ArrowRight,
+  Check,
   FileText,
   GalleryHorizontal,
   Image as ImageIcon,
@@ -41,6 +42,9 @@ interface AngleCardProps {
 /**
  * Kartu angle bergaya kartu marketplace: icon tile + judul + meta, badge
  * status di kanan atas, deskripsi, divider, lalu aksi footer.
+ *
+ * Klik kartu hanya menandai pilihan (tanpa navigasi) — lanjut ke draf lewat
+ * tombol "Generate Draft" yang sticky di bawah halaman angle.
  */
 export function AngleCard({
   option,
@@ -112,11 +116,15 @@ export function AngleCard({
           selected ? "text-primary" : "text-muted-foreground group-hover:text-primary"
         )}
       >
-        {selected ? "Lanjut ke draf brief" : "Pakai angle ini"}
-        <ArrowRight
-          className="size-4 transition-transform group-hover:translate-x-0.5"
-          aria-hidden
-        />
+        {selected ? "Angle terpilih" : "Pilih angle ini"}
+        {selected ? (
+          <Check className="size-4" aria-hidden />
+        ) : (
+          <ArrowRight
+            className="size-4 transition-transform group-hover:translate-x-0.5"
+            aria-hidden
+          />
+        )}
       </span>
     </button>
   );

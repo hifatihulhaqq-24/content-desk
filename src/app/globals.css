@@ -352,3 +352,74 @@
     animation: none !important;
   }
 }
+
+/* ---------- Cetak / Ekspor PDF ----------
+   Ekspor PDF memakai print-to-PDF: `exportPdf()` (lihat brief-export.ts)
+   melepas class `dark` sementara lalu memanggil window.print(). Elemen chrome
+   yang harus hilang diberi utility `print:hidden`; sisanya ditangani di sini. */
+@page {
+  margin: 14mm;
+}
+
+@media print {
+  /* Hasil cetak selalu terang agar kontras dan hemat tinta. */
+  html,
+  body {
+    background: #fff !important;
+    color-scheme: light;
+  }
+
+  /* Sembunyikan seluruh sidebar — wrapper luar menyimpan lebar (sidebar-gap),
+     jadi harus ikut hilang agar tidak menyisakan kolom kosong. */
+  [data-slot="sidebar"] {
+    display: none !important;
+  }
+
+  /* Rapikan sisa shell: margin membulat & bayangan sidebar inset. */
+  [data-slot="sidebar-inset"] {
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  /* Longgarkan padding kontainer halaman. */
+  .max-w-7xl {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  /* Section brief jangan terbelah dua halaman. */
+  [data-section] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    background: #fff !important;
+    border-color: #d8dce3 !important;
+    box-shadow: none !important;
+  }
+
+  /* Header isi artikel menempel pada paragraf pertamanya. */
+  .brief-prose h2 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .brief-prose li,
+  .brief-prose blockquote {
+    break-inside: avoid;
+  }
+
+  /* Gambar (pratinjau render & thumbnail) tidak boleh terpotong. */
+  img {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Badge, tint ikon, dan gradien tetap tercetak. */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

@@ -189,28 +189,22 @@ export function useCreateFlow() {
     trackFlowEvent("content_type_select", { type: next.contentType });
   }, []);
 
-  /** Pilih angle lalu langsung ke halaman brief. */
-  const pickAngleAndOpenBrief = useCallback(
-    (next: AngleOption) => {
-      selectAngle(next);
-      trackFlowEvent("step_view", { step: 4 });
-      router.push("/create/brief");
-    },
-    [router, selectAngle]
-  );
-
   const goToAngles = useCallback(() => {
     router.push("/create/angle");
   }, [router]);
 
+  /** Lanjut ke halaman brief — hanya setelah angle dipilih. */
   const goToBrief = useCallback(() => {
     if (!angle) return;
     trackFlowEvent("step_view", { step: 4 });
     router.push("/create/brief");
   }, [angle, router]);
 
-  const restart = useCallback(() => {
-    trackFlowEvent("flow_restart");
+  /**
+   * Bersihkan seluruh state flow (termasuk revoke URL object lampiran).
+   * Dipakai `restart` dan `finish` supaya tidak ada kebocoran URL blob.
+   */
+  const resetState = useCallback(() => {
     setSelection(null);
     setCustomDraft("");
     setAngle(null);
@@ -221,7 +215,24 @@ export function useCreateFlow() {
       return [];
     });
     setLinks([]);
+  }, []);
+
+  const restart = useCallback(() => {
+    trackFlowEvent("flow_restart");
+    resetState();
     router.push("/create");
+  }, [resetState, router]);
+
+  /**
+   * Simpan selesai → kembali ke landing Konten Brief.
+   *
+   * Sengaja TIDAK mereset state di sini: mereset `angle` akan membuat guard
+   * di BriefView (`!ready → /create/angle`) menimpa navigasi ke `/briefs`.
+   * State justru dibersihkan otomatis saat provider `/create` unmount.
+   */
+  const finish = useCallback(() => {
+    trackFlowEvent("brief_save_exit");
+    router.push("/briefs");
   }, [router]);
 
   /* ---------- Pre-select dari dashboard (/create?topic= | ?title=) ---------- */
@@ -274,10 +285,10 @@ export function useCreateFlow() {
     angle,
     contentType,
     selectAngle,
-    pickAngleAndOpenBrief,
     goToAngles,
     goToBrief,
     restart,
+    finish,
     startFromTopic,
     startFromTitle,
   };

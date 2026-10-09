@@ -25,7 +25,8 @@ const FORMAT_FILTERS: { id: FormatFilter; label: string }[] = [
 
 /**
  * Halaman /create/angle — pilih angle (kartu gaya marketplace) dan lengkapi
- * aset & referensi. Klik kartu = pilih angle + langsung ke halaman brief.
+ * aset & referensi. Klik kartu hanya menandai pilihan; lanjut ke draf lewat
+ * tombol "Generate Draft" yang selalu tampil di bawah halaman.
  */
 export function AnglePage() {
   const router = useRouter();
@@ -198,7 +199,7 @@ export function AnglePage() {
                 option={option}
                 selected={flow.angle?.id === option.id}
                 attachmentsLabel={contextSummary || null}
-                onSelect={() => flow.pickAngleAndOpenBrief(option)}
+                onSelect={() => flow.selectAngle(option)}
               />
             ))}
           </div>
@@ -207,21 +208,31 @@ export function AnglePage() {
 
       <AssetPanel flow={flow} />
 
-      {flow.angle && (
-        <div className="sticky bottom-4 z-10 flex justify-end">
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 shadow-md">
-            <p className="hidden text-xs text-muted-foreground sm:block">
-              Terpilih:{" "}
-              <span className="font-medium text-foreground">
-                {flow.angle.title}
-              </span>
-            </p>
-            <Button type="button" size="sm" onClick={flow.goToBrief}>
-              Lanjut ke draf brief
-            </Button>
-          </div>
+      {/* Aksi lanjut — selalu tampil agar mudah terlihat, aktif setelah angle dipilih. */}
+      <div className="sticky bottom-4 z-10 flex justify-end">
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 shadow-md">
+          <p className="hidden text-xs text-muted-foreground sm:block">
+            {flow.angle ? (
+              <>
+                Terpilih:{" "}
+                <span className="font-medium text-foreground">
+                  {flow.angle.title}
+                </span>
+              </>
+            ) : (
+              "Pilih salah satu angle untuk melanjutkan"
+            )}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            onClick={flow.goToBrief}
+            disabled={!flow.angle}
+          >
+            Generate Draft
+          </Button>
         </div>
-      )}
+      </div>
     </PageContainer>
   );
 }

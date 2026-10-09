@@ -131,7 +131,7 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
 
   return (
     <div className="space-y-4">
-      <BriefToolbar meta={meta} draft={draft} busy={busy} />
+      <BriefToolbar meta={meta} draft={draft} busy={busy} onSaved={flow.finish} />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start">
         <BriefCanvas
@@ -146,7 +146,7 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
         <BriefToc items={tocItems} />
       </div>
 
-      <p className={cn("text-xs text-muted-foreground")}>
+      <p className={cn("text-xs text-muted-foreground print:hidden")}>
         Edit manual: {brief.editCount} · Draf tersimpan lokal di perangkat ini
         (tekan Simpan) — tanpa penyimpanan server.
       </p>

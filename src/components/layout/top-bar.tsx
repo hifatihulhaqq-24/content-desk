@@ -36,7 +36,7 @@ export function TopBar() {
     pathname === "/overview" || pathname.startsWith("/analytics");
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-white/55 px-4 backdrop-blur-xl dark:bg-sidebar/55">
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-white/55 px-4 backdrop-blur-xl print:hidden dark:bg-sidebar/55">
       <SidebarTrigger aria-label="Buka atau tutup menu sidebar" />
       <Separator orientation="vertical" className="mr-1 h-4" />
       <Breadcrumb>
