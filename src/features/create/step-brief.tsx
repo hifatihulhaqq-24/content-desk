@@ -130,9 +130,7 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
   const tocItems = tocItemsForDraft(draft);
 
   return (
-    <div className="space-y-4">
-      <BriefToolbar meta={meta} draft={draft} busy={busy} onSaved={flow.finish} />
-
+    <div className="space-y-4 pb-28">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start">
         <BriefCanvas
           draft={draft}
@@ -150,6 +148,14 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
         Edit manual: {brief.editCount} · Draf tersimpan lokal di perangkat ini
         (tekan Simpan) — tanpa penyimpanan server.
       </p>
+
+      {/* Aksi Simpan & Ekspor mengambang di dasar layar agar selalu terjangkau. */}
+      <BriefToolbar
+        meta={meta}
+        draft={draft}
+        busy={busy}
+        onSaved={flow.finish}
+      />
     </div>
   );
 }
