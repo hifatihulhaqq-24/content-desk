@@ -1,27 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  Check,
-  CircleDashed,
-  Loader2,
-  RefreshCw,
-  Send,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Check, CircleDashed, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState } from "@/components/data/states";
-import { contentTypeLabel } from "@/config/content-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { BriefController } from "@/hooks/use-brief";
-import { ArticlePanel } from "./brief/article-panel";
-import { CarouselPanel } from "./brief/carousel-panel";
-import { ImagePanel } from "./brief/image-panel";
-import { VideoPanel } from "./brief/video-panel";
+import { BriefCanvas, tocItemsForDraft } from "./brief/brief-canvas";
+import { BriefToc } from "./brief/brief-toc";
+import { BriefToolbar } from "./brief/brief-toolbar";
+import type { BriefMeta } from "./brief/brief-export";
 import type { CreateFlow } from "./use-create-flow";
 
 interface StepBriefProps {
@@ -85,12 +75,14 @@ function GeneratingPanel() {
   );
 }
 
-/** Step 4 — generator draf brief (R13/R14) + komentar & regenerate. */
+/**
+ * Host halaman brief: canvas kiri + daftar isi kanan.
+ * Mengekspos daftar isi ke halaman lewat `onTocChange` bila diperlukan.
+ */
 export function StepBrief({ flow, brief }: StepBriefProps) {
   const draft = brief.draft;
   const busy = brief.status === "generating";
   const showSkeleton = busy && !draft;
-  const [comment, setComment] = useState("");
 
   // Regenerate saat draft sudah ada: cukup toast bila gagal, draft tetap tampil.
   useEffect(() => {
@@ -114,11 +106,11 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
         ) : (
           <EmptyState
             title="Lengkapi pilihan terlebih dahulu"
-            message="Pilih angle di step sebelumnya untuk membuat draf brief."
+            message="Pilih angle di halaman sebelumnya untuk membuat draf brief."
             className="min-h-56"
             action={
-              <Button type="button" size="sm" onClick={() => flow.goToStep(2)}>
-                Kembali ke Angle & Format
+              <Button type="button" size="sm" onClick={() => flow.goToAngles()}>
+                Kembali ke pilihan angle
               </Button>
             }
           />
@@ -127,137 +119,36 @@ export function StepBrief({ flow, brief }: StepBriefProps) {
     );
   }
 
+  const meta: BriefMeta = {
+    topic: flow.topicTitle,
+    angle: flow.angle?.title ?? null,
+    scenario: flow.scenario === "custom" ? "Topik sendiri" : "Rekomendasi",
+    imageCount: flow.images.length,
+    links: flow.links,
+    savedAt: null,
+  };
+  const tocItems = tocItemsForDraft(draft);
+
   return (
-    <div className="space-y-6">
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 shadow-xs">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold">
-              Draf Brief · {contentTypeLabel(draft.contentType)}
-            </h2>
-            <Badge
-              variant="secondary"
-              className={cn(busy && "bg-primary/10 text-primary")}
-            >
-              {busy ? (
-                <span className="inline-flex items-center gap-1">
-                  <Loader2 className="size-3 animate-spin" aria-hidden />
-                  Memperbarui…
-                </span>
-              ) : (
-                "Siap diedit"
-              )}
-            </Badge>
-          </div>
-          <p className="mt-1 truncate text-xs text-muted-foreground">
-            {flow.topicTitle} · angle “{flow.angle?.title}” · skenario{" "}
-            {flow.scenario === "custom" ? "topik sendiri" : "rekomendasi"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => flow.goToStep(3)}
-            disabled={busy}
-          >
-            <ArrowLeft className="size-4" aria-hidden /> Ubah aset
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => flow.goToStep(2)}
-            disabled={busy}
-          >
-            <ArrowLeft className="size-4" aria-hidden /> Ubah pilihan
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => brief.generate()}
-            disabled={busy}
-          >
-            <RefreshCw
-              className={cn("size-4", busy && "animate-spin")}
-              aria-hidden
-            />
-            Regenerate seluruh draf
-          </Button>
-        </div>
-      </section>
+    <div className="space-y-4">
+      <BriefToolbar meta={meta} draft={draft} busy={busy} />
 
-      <section className="rounded-xl border border-border bg-card p-4 shadow-xs">
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <h3 className="text-sm font-semibold">Komentar untuk AI</h3>
-            <p className="text-xs text-muted-foreground">
-              Arahkan draf, mis. “bahasa lebih santai” — draf akan dibuat ulang
-              mengikuti komentar.
-            </p>
-          </div>
-        </div>
-        <div className="mt-3 flex items-end gap-2">
-          <Textarea
-            value={comment}
-            onChange={(event) => setComment(event.target.value)}
-            placeholder="Tulis komentar / arahan untuk AI…"
-            rows={2}
-            aria-label="Komentar untuk AI"
-            disabled={busy}
-            className="resize-y"
-          />
-          <Button
-            type="button"
-            disabled={busy || comment.trim().length === 0}
-            onClick={() => {
-              brief.submitComment(comment.trim());
-              setComment("");
-            }}
-          >
-            <Send className="size-4" aria-hidden />
-            Kirim & regenerate
-          </Button>
-        </div>
-      </section>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start">
+        <BriefCanvas
+          draft={draft}
+          brief={brief}
+          topic={flow.topicTitle}
+          angle={flow.angle?.title ?? null}
+          scenario={flow.scenario}
+          imageCount={flow.images.length}
+          links={flow.links}
+        />
+        <BriefToc items={tocItems} />
+      </div>
 
-      {draft.contentType === "article" && (
-        <ArticlePanel
-          data={draft.data}
-          busy={busy}
-          onPatch={brief.patch}
-          onRegenerate={brief.regenerateSection}
-        />
-      )}
-      {draft.contentType === "video" && (
-        <VideoPanel
-          data={draft.data}
-          busy={busy}
-          onPatch={brief.patch}
-          onRegenerate={brief.regenerateSection}
-        />
-      )}
-      {draft.contentType === "image" && (
-        <ImagePanel
-          data={draft.data}
-          busy={busy}
-          onPatch={brief.patch}
-          onRegenerate={brief.regenerateSection}
-        />
-      )}
-      {draft.contentType === "carousel" && (
-        <CarouselPanel
-          data={draft.data}
-          busy={busy}
-          onPatch={brief.patch}
-          onRegenerate={brief.regenerateSection}
-        />
-      )}
-
-      <p className="text-xs text-muted-foreground">
-        Edit manual: {brief.editCount} · Draf hanya tersimpan selama sesi
-        prototipe (tanpa penyimpanan permanen).
+      <p className={cn("text-xs text-muted-foreground")}>
+        Edit manual: {brief.editCount} · Draf tersimpan lokal di perangkat ini
+        (tekan Simpan) — tanpa penyimpanan server.
       </p>
     </div>
   );

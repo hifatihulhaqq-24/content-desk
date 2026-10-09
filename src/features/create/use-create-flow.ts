@@ -1,35 +1,38 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type {
   AngleOption,
   EntryScenario,
+  ReferenceContext,
   TopicIdea,
   UploadedMediaItem,
 } from "@/types/ideation";
 import { trackFlowEvent } from "@/lib/flow-events";
+import { normalizeLink } from "./link-utils";
 import { toast } from "sonner";
 
-export type FlowStep = 1 | 2 | 3 | 4;
-
+/**
+ * State flow lintas halaman `/create` → `/create/angle` → `/create/brief`.
+ * Hook ini dijalankan sekali di CreateFlowProvider (layout segment /create)
+ * agar topik, lampiran, angle, dan draft brief tetap hidup saat pindah rute.
+ *
+ * Langkah aset terpisah dihapus — materi dilampirkan lewat message box
+ * (compose) maupun panel aset di halaman angle.
+ */
 export type TopicSelection =
   | { scenario: "recommended"; topic: TopicIdea }
   | { scenario: "custom"; title: string };
 
-/** Peringatan R2: mengubah pilihan awal mereset hasil step berikutnya. */
-export type PendingChange =
-  | { kind: "topic"; next: TopicSelection }
-  | { kind: "selection"; next: { angle?: AngleOption } };
-
-/** Sumber aset di Step 3 (R8): upload sendiri atau DAM internal. */
-export type AssetMode = "upload" | "directory" | null;
-
 const MIN_CUSTOM_LENGTH = 4;
-/** Batas ukuran file unggahan (mock, R8). */
+/** Batas ukuran file unggahan (mock). */
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
-const ACCEPTED_TYPES = ["image/", "video/", "application/pdf"];
 
-function sameTopic(current: TopicSelection | null, next: TopicSelection): boolean {
+function sameTopic(
+  current: TopicSelection | null,
+  next: TopicSelection
+): boolean {
   if (!current || current.scenario !== next.scenario) return false;
   if (current.scenario === "recommended" && next.scenario === "recommended") {
     return current.topic.id === next.topic.id;
@@ -42,349 +45,238 @@ function sameTopic(current: TopicSelection | null, next: TopicSelection): boolea
   return false;
 }
 
-function assetTypeOf(file: File): UploadedMediaItem["type"] | null {
-  if (file.type.startsWith("image/")) return "image";
-  if (file.type.startsWith("video/")) return "video";
-  if (
-    file.type === "application/pdf" ||
-    file.name.toLowerCase().endsWith(".pdf") ||
-    file.name.toLowerCase().endsWith(".doc") ||
-    file.name.toLowerCase().endsWith(".docx")
-  ) {
-    return "document";
-  }
-  return null;
+function titleOf(selection: TopicSelection | null): string {
+  if (!selection) return "";
+  return selection.scenario === "recommended"
+    ? selection.topic.title
+    : selection.title;
 }
 
-function isAcceptedFile(file: File): boolean {
-  if (assetTypeOf(file) === null) return false;
-  return ACCEPTED_TYPES.some((prefix) => file.type.startsWith(prefix)) ||
-    file.name.toLowerCase().endsWith(".pdf") ||
-    file.name.toLowerCase().endsWith(".doc") ||
-    file.name.toLowerCase().endsWith(".docx");
+function newUploadId(): string {
+  return `img-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function useCreateFlow() {
-  const [step, setStep] = useState<FlowStep>(1);
-  const [furthest, setFurthest] = useState<FlowStep>(1);
-  const [scenario, setScenario] = useState<EntryScenario | null>(null);
-  const [topicIdea, setTopicIdea] = useState<TopicIdea | null>(null);
-  const [customTopic, setCustomTopic] = useState("");
+  const router = useRouter();
+  const [selection, setSelection] = useState<TopicSelection | null>(null);
   const [customDraft, setCustomDraft] = useState("");
   const [angle, setAngle] = useState<AngleOption | null>(null);
-  const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
-  // Step 3 — kesiapan aset (R8).
-  const [assetMode, setAssetModeState] = useState<AssetMode>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedMediaItem[]>([]);
-  const [selectedInternalAssetIds, setSelectedInternalAssetIds] = useState<
-    string[]
-  >([]);
-
-  const stepViewAt = useRef<number | null>(null);
+  // Lampiran: gambar & link referensi (compose + halaman angle).
+  const [images, setImages] = useState<UploadedMediaItem[]>([]);
+  const [links, setLinks] = useState<string[]>([]);
 
   useEffect(() => {
     trackFlowEvent("flow_start");
   }, []);
 
-  useEffect(() => {
-    stepViewAt.current = Date.now();
-    trackFlowEvent("step_view", { step });
-  }, [step]);
+  const submitted = selection !== null;
+  const topicTitle = titleOf(selection);
+  const scenario: EntryScenario | null = selection?.scenario ?? null;
 
-  const currentSelection: TopicSelection | null = useMemo(() => {
-    if (scenario === "recommended" && topicIdea) {
-      return { scenario: "recommended", topic: topicIdea };
-    }
-    if (scenario === "custom" && customTopic) {
-      return { scenario: "custom", title: customTopic };
-    }
-    return null;
-  }, [scenario, topicIdea, customTopic]);
-
-  const topicTitle =
-    scenario === "custom"
-      ? customTopic.trim()
-      : scenario === "recommended"
-        ? topicIdea?.title ?? ""
-        : "";
-
-  /** Format konten diturunkan dari angle terpilih — bukan pilihan terpisah. */
+  /** Format konten diturunkan dari angle terpilih. */
   const contentType = angle?.contentType ?? null;
 
-  /** Ringkasan aset terpilih untuk SelectionSummary (Step 3–4). */
-  const assetSummary = useMemo(() => {
-    if (assetMode === "upload") {
-      return uploadedFiles.length > 0
-        ? `${uploadedFiles.length} file diunggah`
-        : null;
+  const draftTitle = customDraft.trim();
+  const canSubmit = draftTitle.length >= MIN_CUSTOM_LENGTH;
+  /** Judul di draft sama dengan yang sudah dikirim. */
+  const draftMatchesSelection =
+    submitted &&
+    draftTitle.toLowerCase() === topicTitle.trim().toLowerCase();
+
+  const referenceContext = useMemo<ReferenceContext>(
+    () => ({ imageCount: images.length, links }),
+    [images.length, links]
+  );
+
+  const contextSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (images.length > 0) {
+      parts.push(`${images.length} gambar`);
     }
-    if (assetMode === "directory") {
-      return selectedInternalAssetIds.length > 0
-        ? `${selectedInternalAssetIds.length} aset DAM`
-        : null;
+    if (links.length > 0) {
+      parts.push(`${links.length} link referensi`);
     }
-    return null;
-  }, [assetMode, uploadedFiles.length, selectedInternalAssetIds.length]);
+    return parts;
+  }, [images.length, links.length]);
 
-  const resetAssets = useCallback(() => {
-    setAssetModeState(null);
-    setUploadedFiles([]);
-    setSelectedInternalAssetIds([]);
-  }, []);
+  /* ---------- Submit topik → halaman angle ---------- */
 
-  const hasDownstream =
-    angle !== null || assetMode !== null || uploadedFiles.length > 0;
-  const briefVisited = furthest >= 4;
-
-  const applyTopic = useCallback(
-    (next: TopicSelection) => {
-      const changed = !sameTopic(currentSelection, next);
-      setScenario(next.scenario);
-      if (next.scenario === "recommended") {
-        setTopicIdea(next.topic);
-      } else {
-        setTopicIdea(null);
-        setCustomTopic(next.title.trim());
-        setCustomDraft(next.title.trim());
-      }
+  const submit = useCallback(() => {
+    const title = customDraft.trim();
+    if (title.length < MIN_CUSTOM_LENGTH) {
+      toast.error(`Topik minimal ${MIN_CUSTOM_LENGTH} karakter.`);
+      return;
+    }
+    const sameAsCurrent =
+      selection !== null &&
+      titleOf(selection).trim().toLowerCase() === title.toLowerCase();
+    if (!sameAsCurrent) {
+      const next: TopicSelection = { scenario: "custom", title };
+      const changed = !sameTopic(selection, next);
+      setSelection(next);
       if (changed) {
         setAngle(null);
-        resetAssets();
-        setStep(1);
-        setFurthest(1);
-        trackFlowEvent("topic_change", { scenario: next.scenario });
+        trackFlowEvent("topic_change", { scenario: "custom" });
       }
-    },
-    [currentSelection, resetAssets]
-  );
+    }
+    trackFlowEvent("topic_submit", {
+      images: images.length,
+      links: links.length,
+    });
+    router.push("/create/angle");
+  }, [customDraft, selection, images.length, links.length, router]);
 
-  const requestTopic = useCallback(
-    (next: TopicSelection) => {
-      if (sameTopic(currentSelection, next)) return;
-      if (hasDownstream || briefVisited) {
-        setPendingChange({ kind: "topic", next });
-        return;
-      }
-      applyTopic(next);
-    },
-    [applyTopic, currentSelection, hasDownstream, briefVisited]
-  );
+  /* ---------- Lampiran: gambar ---------- */
 
-  const applySelection = useCallback(
-    (next: { angle?: AngleOption }) => {
-      if (!next.angle || next.angle.id === angle?.id) return;
-      setAngle(next.angle);
-      trackFlowEvent("angle_select", { angle: next.angle.id });
-      trackFlowEvent("content_type_select", { type: next.angle.contentType });
-      // Angle baru mengunci format baru → aset yang dipilih jadi tidak relevan.
-      resetAssets();
-      if (furthest > 2) setFurthest(2);
-    },
-    [angle, furthest, resetAssets]
-  );
-
-  const requestSelection = useCallback(
-    (next: { angle?: AngleOption }) => {
-      const willResetBrief =
-        briefVisited && next.angle && next.angle.id !== angle?.id;
-      if (willResetBrief) {
-        setPendingChange({ kind: "selection", next });
-        return;
-      }
-      applySelection(next);
-    },
-    [angle, applySelection, briefVisited]
-  );
-
-  const confirmPending = useCallback(() => {
-    if (!pendingChange) return;
-    if (pendingChange.kind === "topic") applyTopic(pendingChange.next);
-    else applySelection(pendingChange.next);
-    setPendingChange(null);
-  }, [applyTopic, applySelection, pendingChange]);
-
-  const cancelPending = useCallback(() => setPendingChange(null), []);
-
-  const commitCustomTopic = useCallback(() => {
-    const title = customDraft.trim();
-    if (title.length < MIN_CUSTOM_LENGTH) return;
-    requestTopic({ scenario: "custom", title });
-  }, [customDraft, requestTopic]);
-
-  /* ---------- Aset (Step 3) ---------- */
-
-  const setAssetMode = useCallback(
-    (mode: Exclude<AssetMode, null>) => {
-      setAssetModeState((current) => {
-        if (current === mode) return current;
-        trackFlowEvent("asset_mode_select", { mode });
-        return mode;
-      });
-      // Ganti skenario aset → bersihkan pilihan dari skenario sebelumnya.
-      setUploadedFiles([]);
-      setSelectedInternalAssetIds([]);
-    },
-    []
-  );
-
-  const addUploadedFiles = useCallback((files: File[]) => {
+  const addImages = useCallback((files: File[]) => {
     const accepted: UploadedMediaItem[] = [];
     let rejected = 0;
     for (const file of files) {
-      if (!isAcceptedFile(file) || file.size > MAX_FILE_SIZE) {
+      if (!file.type.startsWith("image/") || file.size > MAX_FILE_SIZE) {
         rejected += 1;
         continue;
       }
       accepted.push({
-        id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2, 8)}`,
+        id: newUploadId(),
         name: file.name,
         size: file.size,
-        type: assetTypeOf(file) ?? "document",
-        previewUrl: file.type.startsWith("image/")
-          ? URL.createObjectURL(file)
-          : undefined,
+        type: "image",
+        previewUrl: URL.createObjectURL(file),
       });
     }
     if (rejected > 0) {
       toast.error(
-        `${rejected} file dilewati — hanya gambar/video/dokumen (maks 50 MB).`
+        `${rejected} file dilewati — hanya gambar yang didukung (maks 50 MB).`
       );
     }
     if (accepted.length > 0) {
-      setUploadedFiles((current) => [...current, ...accepted]);
+      setImages((current) => [...current, ...accepted]);
       trackFlowEvent("asset_upload", { count: accepted.length });
     }
   }, []);
 
-  const removeUploadedFile = useCallback((id: string) => {
-    setUploadedFiles((current) => {
+  const removeImage = useCallback((id: string) => {
+    setImages((current) => {
       const target = current.find((file) => file.id === id);
       if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
       return current.filter((file) => file.id !== id);
     });
   }, []);
 
-  const toggleInternalAsset = useCallback((id: string) => {
-    setSelectedInternalAssetIds((current) => {
-      const next = current.includes(id)
-        ? current.filter((value) => value !== id)
-        : [...current, id];
-      trackFlowEvent("asset_select", { count: next.length });
-      return next;
-    });
+  /* ---------- Lampiran: link referensi ---------- */
+
+  const addLink = useCallback((raw: string) => {
+    const url = normalizeLink(raw);
+    if (!url) {
+      toast.error("Link tidak valid — contoh: https://example.com/artikel");
+      return;
+    }
+    setLinks((current) =>
+      current.includes(url) ? current : [...current, url]
+    );
+    trackFlowEvent("link_add");
   }, []);
 
-  /* ---------- Navigasi ---------- */
+  const removeLink = useCallback((url: string) => {
+    setLinks((current) => current.filter((value) => value !== url));
+  }, []);
 
-  const canAdvance =
-    step === 1
-      ? topicTitle.trim().length > 0
-      : step === 2
-        ? angle !== null
-        : step === 3
-          ? assetMode !== null &&
-            (assetMode === "upload"
-              ? uploadedFiles.length > 0
-              : selectedInternalAssetIds.length > 0)
-          : true;
+  /* ---------- Navigasi antar halaman ---------- */
 
-  const advance = useCallback(() => {
-    if (!canAdvance || step >= 4) return;
-    trackFlowEvent("step_done", {
-      step,
-      ms: Date.now() - (stepViewAt.current ?? Date.now()),
-    });
-    const next = (step + 1) as FlowStep;
-    setStep(next);
-    setFurthest((value) => (value < next ? next : value));
-  }, [canAdvance, step]);
+  const selectAngle = useCallback((next: AngleOption) => {
+    setAngle(next);
+    trackFlowEvent("angle_select", { angle: next.id });
+    trackFlowEvent("content_type_select", { type: next.contentType });
+  }, []);
 
-  const goToStep = useCallback(
-    (target: FlowStep) => {
-      if (target === step || target > furthest) return;
-      trackFlowEvent("step_navigate", { from: step, to: target });
-      setStep(target);
+  /** Pilih angle lalu langsung ke halaman brief. */
+  const pickAngleAndOpenBrief = useCallback(
+    (next: AngleOption) => {
+      selectAngle(next);
+      trackFlowEvent("step_view", { step: 4 });
+      router.push("/create/brief");
     },
-    [furthest, step]
+    [router, selectAngle]
   );
+
+  const goToAngles = useCallback(() => {
+    router.push("/create/angle");
+  }, [router]);
+
+  const goToBrief = useCallback(() => {
+    if (!angle) return;
+    trackFlowEvent("step_view", { step: 4 });
+    router.push("/create/brief");
+  }, [angle, router]);
 
   const restart = useCallback(() => {
     trackFlowEvent("flow_restart");
-    setStep(1);
-    setFurthest(1);
-    setScenario(null);
-    setTopicIdea(null);
-    setCustomTopic("");
+    setSelection(null);
     setCustomDraft("");
     setAngle(null);
-    resetAssets();
-    setPendingChange(null);
-  }, [resetAssets]);
+    setImages((current) => {
+      current.forEach((file) => {
+        if (file.previewUrl) URL.revokeObjectURL(file.previewUrl);
+      });
+      return [];
+    });
+    setLinks([]);
+    router.push("/create");
+  }, [router]);
 
-  /** Pre-select topik dari dashboard Workspace (/create?topic=<id>). */
+  /* ---------- Pre-select dari dashboard (/create?topic= | ?title=) ---------- */
+
+  /** Pre-select topik rekomendasi → langsung ke halaman angle. */
   const startFromTopic = useCallback(
     (topic: TopicIdea) => {
-      setScenario("recommended");
-      setTopicIdea(topic);
-      setCustomTopic("");
-      setCustomDraft("");
+      setSelection({ scenario: "recommended", topic });
+      setCustomDraft(topic.title);
       setAngle(null);
-      resetAssets();
-      setPendingChange(null);
-      setStep(2);
-      setFurthest(2);
       trackFlowEvent("topic_change", { scenario: "recommended" });
+      trackFlowEvent("topic_submit", { preselect: 1 });
+      router.replace("/create/angle");
     },
-    [resetAssets]
+    [router]
   );
 
-  /** Pre-fill topik custom dari daftar proyek (/create?title=<judul>). */
+  /** Pre-fill topik custom → langsung ke halaman angle. */
   const startFromTitle = useCallback(
     (title: string) => {
       const trimmed = title.trim();
       if (trimmed.length < MIN_CUSTOM_LENGTH) return;
-      setScenario("custom");
-      setTopicIdea(null);
-      setCustomTopic(trimmed);
+      setSelection({ scenario: "custom", title: trimmed });
       setCustomDraft(trimmed);
       setAngle(null);
-      resetAssets();
-      setPendingChange(null);
-      setStep(2);
-      setFurthest(2);
       trackFlowEvent("topic_change", { scenario: "custom" });
+      trackFlowEvent("topic_submit", { preselect: 1 });
+      router.replace("/create/angle");
     },
-    [resetAssets]
+    [router]
   );
 
   return {
-    step,
-    furthest,
+    submitted,
     scenario,
-    topicIdea,
     topicTitle,
     customDraft,
     setCustomDraft,
+    canSubmit,
+    draftMatchesSelection,
+    submit,
+    images,
+    addImages,
+    removeImage,
+    links,
+    addLink,
+    removeLink,
+    referenceContext,
+    contextSummary,
     angle,
     contentType,
-    assetSummary,
-    pendingChange,
-    assetMode,
-    uploadedFiles,
-    selectedInternalAssetIds,
-    hasDownstream,
-    canAdvance,
-    requestTopic,
-    requestSelection,
-    confirmPending,
-    cancelPending,
-    commitCustomTopic,
-    setAssetMode,
-    addUploadedFiles,
-    removeUploadedFile,
-    toggleInternalAsset,
-    advance,
-    goToStep,
+    selectAngle,
+    pickAngleAndOpenBrief,
+    goToAngles,
+    goToBrief,
     restart,
     startFromTopic,
     startFromTitle,

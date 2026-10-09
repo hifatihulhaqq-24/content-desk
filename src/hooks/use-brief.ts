@@ -6,6 +6,7 @@ import type {
   BriefSectionKey,
   ContentTypeId,
   EntryScenario,
+  ReferenceContext,
 } from "@/types/ideation";
 import { getIdeationService } from "@/services/ideation-service";
 import { getFlowEvents, trackFlowEvent } from "@/lib/flow-events";
@@ -17,6 +18,8 @@ export interface BriefInput {
   scenario: EntryScenario;
   angle: { id: string; title: string } | null;
   contentType: ContentTypeId | null;
+  /** Konteks lampiran (gambar & link referensi) dari message box. */
+  context?: ReferenceContext;
 }
 
 export interface BriefGenerateOptions {
@@ -38,6 +41,7 @@ export function useBrief(enabled: boolean, input: BriefInput) {
   const [runId, setRunId] = useState(0);
 
   const angleId = input.angle?.id ?? null;
+  const contextKey = JSON.stringify(input.context ?? null);
   const nonceRef = useRef(0);
   const keyRef = useRef<string | null>(null);
   const startRef = useRef<number | null>(null);
@@ -50,8 +54,9 @@ export function useBrief(enabled: boolean, input: BriefInput) {
         scenario: input.scenario,
         angle: angleId,
         type: input.contentType,
+        context: contextKey,
       }),
-    [input.topic, input.scenario, angleId, input.contentType]
+    [input.topic, input.scenario, angleId, input.contentType, contextKey]
   );
 
   const complete =
@@ -82,6 +87,7 @@ export function useBrief(enabled: boolean, input: BriefInput) {
           section: options?.section,
           comment: options?.comment,
           nonce: nonceRef.current,
+          context: input.context,
         });
         setDraft(result);
         setStatus("ready");
@@ -105,7 +111,7 @@ export function useBrief(enabled: boolean, input: BriefInput) {
         trackFlowEvent("brief_error");
       }
     },
-    [input.topic, input.scenario, input.angle, input.contentType]
+    [input.topic, input.scenario, input.angle, input.contentType, input.context]
   );
 
   // Generate otomatis saat input berubah dan user berada di Step 4 (R2/R13).

@@ -205,6 +205,148 @@
   animation: cell-pop 320ms ease-out backwards;
 }
 
+/* Hero halaman Buat Konten (/create) — gradasi hijau muda & biru ala
+   Lovable dengan gerakan sangat halus (moving gradient) supaya dinamis.
+   Lapisan gradasi di-overlay pada warna dasar dengan opacity 40%.
+   Memakai selector `.dark …` langsung (bukan Tailwind variant) karena ini
+   CSS mentah — kelas `.dark` ditanam di <html> oleh next-themes. */
+.create-hero-bg {
+  position: relative;
+  isolation: isolate;
+  /* Warna dasar terang agar teks hero selalu kontras. */
+  background-color: #f4f8fb;
+  transition: background-color 400ms ease;
+}
+
+.create-hero-bg::before {
+  content: "";
+  position: absolute;
+  /* Sedikit melebar ke luar supaya tepi tidak terlihat saat bergerak. */
+  inset: -15%;
+  z-index: -1;
+  background:
+    radial-gradient(
+      58% 40% at 50% 44%,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 255, 255, 0) 72%
+    ),
+    radial-gradient(72% 52% at 2% 58%, #60a5fa 0%, rgba(96, 165, 250, 0) 68%),
+    radial-gradient(72% 52% at 99% 52%, #38bdf8 0%, rgba(56, 189, 248, 0) 68%),
+    radial-gradient(
+      115% 72% at 50% 118%,
+      #34d399 0%,
+      rgba(52, 211, 153, 0.92) 32%,
+      rgba(52, 211, 153, 0) 70%
+    ),
+    linear-gradient(
+      180deg,
+      #f8fbff 0%,
+      #e6f4ff 30%,
+      #9fd2fb 62%,
+      #86efac 100%
+    );
+  opacity: 0.4;
+  will-change: transform;
+  animation: hero-gradient-move 26s ease-in-out infinite alternate;
+  transition: opacity 400ms ease;
+}
+
+/* Mode gelap: dasar gelap + gradasi biru–hijau pekat yang diredupkan,
+   blob putih diturunkan intensitasnya jadi cahaya lembut. */
+.dark .create-hero-bg {
+  background-color: #0b1220;
+}
+
+.dark .create-hero-bg::before {
+  background:
+    radial-gradient(
+      58% 40% at 50% 44%,
+      rgba(120, 180, 255, 0.16) 0%,
+      rgba(120, 180, 255, 0) 72%
+    ),
+    radial-gradient(72% 52% at 2% 58%, #1d4ed8 0%, rgba(29, 78, 216, 0) 68%),
+    radial-gradient(72% 52% at 99% 52%, #0ea5e9 0%, rgba(14, 165, 233, 0) 68%),
+    radial-gradient(
+      115% 72% at 50% 118%,
+      #059669 0%,
+      rgba(5, 150, 105, 0.85) 32%,
+      rgba(5, 150, 105, 0) 70%
+    ),
+    linear-gradient(
+      180deg,
+      #0b1220 0%,
+      #0d1b34 30%,
+      #103a72 62%,
+      #0a4a3a 100%
+    );
+  opacity: 0.5;
+}
+
+@keyframes hero-gradient-move {
+  0% {
+    transform: translate3d(-3%, -2%, 0) scale(1.04);
+  }
+  50% {
+    transform: translate3d(3%, 2%, 0) scale(1.1);
+  }
+  100% {
+    transform: translate3d(-2%, 3%, 0) scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .create-hero-bg::before {
+    animation: none;
+  }
+}
+
+/* Preview isi artikel di canvas brief — dipakai saat mode tampil
+   (mode edit memakai RichTextEditor Tiptap). */
+.brief-prose h2 {
+  margin-top: 1rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.brief-prose h2:first-child {
+  margin-top: 0;
+}
+
+.brief-prose p {
+  margin-bottom: 0.6rem;
+  color: var(--muted-foreground);
+}
+
+.brief-prose p:last-child {
+  margin-bottom: 0;
+}
+
+.brief-prose strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.brief-prose em {
+  font-style: italic;
+}
+
+.brief-prose ul,
+.brief-prose ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+  color: var(--muted-foreground);
+}
+
+.brief-prose ul {
+  list-style: disc;
+}
+
+.brief-prose ol {
+  list-style: decimal;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .heat-cell {
     animation: none !important;
